@@ -1,0 +1,22 @@
+node_modules
+.next
+out
+.env*
+!.env.example
+*.tsbuildinfo
+.DS_Store
+
+# Python
+backend/.venv
+.venv
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.pytest_cache
+.pytest_cache/
+
+# SQLite databases & logs
+*.db
+*.db-shm
+*.db-wal
+
