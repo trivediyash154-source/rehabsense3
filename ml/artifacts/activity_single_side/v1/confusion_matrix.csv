@@ -1,0 +1,10 @@
+true\pred,cycling,lying,other_exercise,running,sitting,stairs_down,stairs_up,standing,walking
+cycling,16404,0,206,0,70,17,64,82,0
+lying,18,16282,118,0,848,1,13,144,0
+other_exercise,11,124,33030,69,34,214,273,180,540
+running,0,0,61,8532,9,17,25,89,11
+sitting,43,1192,93,1,7066,3,10,2130,0
+stairs_down,1,0,947,4,62,7536,113,149,32
+stairs_up,45,0,1323,1,54,112,7260,147,162
+standing,1,1,112,7,1099,4,32,15824,0
+walking,5,0,2563,0,54,177,293,174,25733

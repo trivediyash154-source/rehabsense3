@@ -23,6 +23,21 @@ config.set_main_option("sqlalchemy.url", get_settings().database_url)
 target_metadata = Base.metadata
 
 
+def _compare_type(context, inspected_column, metadata_column, inspected_type, metadata_type):
+    """Ignore SQLite's VARCHAR storage of Enum columns.
+
+    SQLite has no enum type; adding an enum value then looks like a column
+    type change. PostgreSQL migrations extend the native type explicitly
+    (ALTER TYPE ... ADD VALUE), so this difference is never a real one.
+    """
+    import sqlalchemy as sa
+
+    if isinstance(metadata_type, sa.Enum) and isinstance(inspected_type, sa.String) \
+            and context.dialect.name == "sqlite":
+        return False
+    return None
+
+
 def run_migrations_offline() -> None:
     context.configure(
         url=config.get_main_option("sqlalchemy.url"),
@@ -47,6 +62,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             render_as_batch=True,
+            compare_type=_compare_type,
         )
         with context.begin_transaction():
             context.run_migrations()

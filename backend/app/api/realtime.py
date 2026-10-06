@@ -90,6 +90,16 @@ async def ingest(websocket: WebSocket, session_id: int, leg: str = Query(...)):
         await websocket.close(code=1008)
         return
 
+    from app.services.hw_registry import hw_registry
+
+    if hw_registry.get(session_id) is not None:
+        await websocket.send_json(
+            ProtocolError(code="SESSION_PROTOCOL_CONFLICT",
+                          message="This session is already receiving a protocol v2 stream.").model_dump()
+        )
+        await websocket.close(code=1008)
+        return
+
     # ---- handshake ------------------------------------------------------ #
     try:
         raw = await asyncio.wait_for(websocket.receive_json(), timeout=10.0)
@@ -215,6 +225,205 @@ async def ingest(websocket: WebSocket, session_id: int, leg: str = Query(...)):
                   device_id=hello.device_id)
 
 
+# ---------------------------------------------------------------------- #
+# Hardware v2: one ESP32, LEFT + RIGHT MPU6050, N force channels
+# ---------------------------------------------------------------------- #
+
+async def _refuse(websocket: WebSocket, code: str, message: str) -> None:
+    await websocket.send_json(ProtocolError(code=code, message=message).model_dump())
+    await websocket.close(code=1008)
+
+
+@router.websocket("/ws/ingest/v2/{session_id}")
+async def ingest_v2(websocket: WebSocket, session_id: int):
+    """Dual-IMU device ingestion. See docs/SENSOR_PROTOCOL_V2.md."""
+    import hmac
+
+    from app.core.config import get_settings
+    from app.hardware.protocol_v2 import (
+        DataPacketV2,
+        DeviceStatusV2,
+        HelloAckV2,
+        HelloV2,
+    )
+    from app.services import sensing_service
+    from app.services.hw_registry import hw_registry
+
+    settings = get_settings()
+    await websocket.accept()
+
+    info = _load_session(session_id)
+    if info is None:
+        await _refuse(websocket, "SESSION_NOT_FOUND", f"Session {session_id} not found")
+        return
+    if info["status"] is not SessionStatus.ACTIVE:
+        await _refuse(websocket, "SESSION_NOT_ACTIVE", "This session is not active.")
+        return
+    if registry.get(session_id) is not None:
+        # A v1 per-leg stream already feeds this session; mixing protocols
+        # would merge two incompatible sensor layouts into one record.
+        await _refuse(websocket, "SESSION_PROTOCOL_CONFLICT",
+                      "This session is already receiving a protocol v1 stream.")
+        return
+
+    try:
+        raw = await asyncio.wait_for(websocket.receive_json(), timeout=10.0)
+        hello = HelloV2.model_validate(raw)
+    except (asyncio.TimeoutError, ValidationError, ValueError) as exc:
+        await _refuse(websocket, "INVALID_HANDSHAKE", f"Expected a valid v2 hello frame: {exc}"[:300])
+        return
+    except WebSocketDisconnect:
+        return
+
+    if hello.simulated and not settings.allow_simulated_devices:
+        await _refuse(websocket, "SIMULATION_DISABLED",
+                      "This server does not accept simulated devices.")
+        return
+
+    existing = hw_registry.get(session_id)
+    if existing is not None and existing.attached:
+        await _refuse(websocket, "DEVICE_ALREADY_ATTACHED",
+                      "A device is already streaming into this session.")
+        return
+    if existing is not None and existing.processor.hello.device_id != hello.device_id:
+        await _refuse(websocket, "DEVICE_MISMATCH",
+                      "A different device recorded the start of this session.")
+        return
+
+    def _provenance():
+        db = SessionLocal()
+        try:
+            return sensing_service.resolve_provenance(db, hello)
+        finally:
+            db.close()
+
+    provenance, refusal = await asyncio.to_thread(_provenance)
+    # The fleet-wide key (if set) gates devices that have no key of their own;
+    # a registered device has already been checked against its own key.
+    if refusal is None and provenance != "PHYSICAL_REGISTERED" and settings.device_ingest_key:
+        if not hmac.compare_digest((hello.device_key or "").encode(),
+                                   settings.device_ingest_key.encode()):
+            refusal = "DEVICE_UNAUTHORIZED"
+    if refusal:
+        await _refuse(websocket, refusal, {
+            "DEVICE_UNAUTHORIZED": "Device key missing or invalid.",
+            "DEVICE_REVOKED": "This device has been revoked.",
+            "DEVICE_KEY_EXPIRED": "This device's key has expired; re-register it.",
+            "DEVICE_NOT_REGISTERED": "Only registered devices may stream to this server.",
+        }.get(refusal, "A registered hardware device cannot declare itself simulated."))
+        return
+
+    def _register():
+        db = SessionLocal()
+        try:
+            device_pk = sensing_service.register_v2_device(db, session_id, hello, provenance)
+            baseline = sensing_service.baseline_rom_for_session(db, session_id)
+            return device_pk, baseline
+        finally:
+            db.close()
+
+    device_pk, baseline = await asyncio.to_thread(_register)
+    hw = await hw_registry.open(session_id, info["exercise_type"], hello, device_pk, baseline,
+                                provenance)
+    await hw_registry.attach(session_id, hello)
+
+    await websocket.send_json(HelloAckV2(
+        calibration_health_seconds=hw.processor.calibrator.health_seconds,
+        session_id=session_id,
+        server_time=time.time(),
+        accepted_sample_rate_hz=hello.sample_rate_hz,
+        accepted_imus=[i.side for i in hello.imus],
+        accepted_force_channels=[c.id for c in hello.force_channels],
+        calibration_still_seconds=hw.processor.calibrator.still_seconds,
+        calibration_movement_seconds=hw.processor.calibrator.movement_seconds,
+    ).model_dump(mode="json"))
+    log_event(logger, "hw_device_attached", session_id=session_id, device_id=hello.device_id,
+              simulated=hello.simulated, provenance=provenance, imus=[i.side.value for i in hello.imus],
+              force_channels=len(hello.force_channels), rate=hello.sample_rate_hz)
+
+    bad = 0
+    last_phase = None
+    try:
+        while True:
+            text = await websocket.receive_text()
+            arrival = time.time()
+            try:
+                raw = json.loads(text)
+                if not isinstance(raw, dict):
+                    raise ValueError("not an object")
+            except (ValueError, TypeError):
+                bad += 1
+                await websocket.send_json(ProtocolError(
+                    code="INVALID_SENSOR_PACKET", message="Packet was not a JSON object.").model_dump())
+                if bad > MAX_BAD_PACKETS:
+                    await websocket.close(code=1008)
+                    return
+                continue
+            kind = raw.get("type")
+            if kind == "ping":
+                await websocket.send_json({"type": "pong", "ts": time.time()})
+                continue
+            if kind == "event":
+                from app.hardware.protocol_v2 import DeviceEventV2
+
+                try:
+                    await hw_registry.device_event(session_id, DeviceEventV2.model_validate(raw))
+                except ValidationError:
+                    pass
+                continue
+            if kind == "status":
+                try:
+                    status = DeviceStatusV2.model_validate(raw)
+                except ValidationError:
+                    continue
+                await hw_registry.status(session_id, status.model_dump())
+                continue
+            if kind != "data":
+                continue
+            try:
+                packet = DataPacketV2.model_validate(raw)
+            except ValidationError as exc:
+                bad += 1
+                log_event(logger, "invalid_packet", session_id=session_id, count=bad, protocol=2)
+                await websocket.send_json(ProtocolError(
+                    code="INVALID_SENSOR_PACKET",
+                    message=str(exc.errors()[0].get("msg", "malformed packet"))[:180],
+                ).model_dump())
+                if bad > MAX_BAD_PACKETS:
+                    await websocket.close(code=1008)
+                    return
+                continue
+            alive = await hw_registry.process(session_id, packet.samples, arrival, packet.sent_ts)
+            phase = hw_registry.calibration_phase(session_id)
+            if alive and phase != last_phase:
+                last_phase = phase
+                ev = hw_registry.get(session_id).processor.calibration_event().payload
+                await websocket.send_json({"type": "calibration_phase", "sequence": ev["sequence"],
+                                           "phase": phase, "instruction": ev["instruction"]})
+            if not alive:
+                # The session was ended from the UI; stop the device streaming
+                # into nothing.
+                await websocket.send_json(ProtocolError(
+                    code="SESSION_ENDED", message="This session has ended.").model_dump())
+                await websocket.close(code=1000)
+                return
+    except WebSocketDisconnect:
+        pass
+    except Exception:  # pragma: no cover - defensive
+        logger.exception("v2 ingest loop failed")
+    finally:
+        await hw_registry.detach(session_id)
+
+        def _offline():
+            db = SessionLocal()
+            try:
+                sensing_service.mark_device_offline(db, hello.device_id)
+            finally:
+                db.close()
+        await asyncio.to_thread(_offline)
+        log_event(logger, "hw_device_detached", session_id=session_id, device_id=hello.device_id)
+
+
 def _ticket_holder(ticket: str | None, session_id: int) -> int | None:
     """Validate a live-socket ticket against this session id.
 
@@ -274,6 +483,13 @@ async def live(websocket: WebSocket, session_id: int, ticket: str | None = Query
         await websocket.send_json(
             live_events.from_processor_event(existing.processor.connection_event())
         )
+    from app.services.hw_registry import hw_registry
+
+    hw = hw_registry.get(session_id)
+    if hw is not None:
+        # seq 0: a snapshot, never newer than the next stamped event.
+        await websocket.send_json(live_events.from_processor_event(hw.processor.connection_event()))
+        await websocket.send_json(live_events.from_processor_event(hw.processor.calibration_event()))
 
     pump = asyncio.create_task(manager.pump(sub))
     try:

@@ -35,8 +35,8 @@ const stageCopy: Record<AuthMode, StageCopy> = {
     ),
     message: "Both limbs, still aligned in time.",
     telemetry: [
-      ["STATE", "ESTABLISHED"],
-      ["PAIRING", "L ↔ R LOCKED"],
+      ["SIGN-IN", "EMAIL + PASSWORD"],
+      ["SESSION", "HTTPONLY COOKIE"],
     ],
   },
   signup: {
@@ -52,55 +52,53 @@ const stageCopy: Record<AuthMode, StageCopy> = {
     ),
     message: "Sensor nodes coming online, one segment at a time.",
     telemetry: [
-      ["STATE", "INITIALISING"],
-      ["NODES", "02 / DETECTED"],
+      ["ACCOUNT", "EMAIL + PASSWORD"],
+      ["PASSWORD", "ARGON2ID HASH"],
     ],
   },
   "verify-phone": {
-    eyebrow: "CONFIRM THE CONNECTION",
+    eyebrow: "PHONE VERIFICATION",
     headline: (
       <>
-        Six digits
+        Not part of
         <br />
-        <em>close the loop.</em>
+        <em>this prototype.</em>
       </>
     ),
-    message: "A pulse travels from your device to the sensing system.",
+    message: "No SMS provider is connected, so no code is ever sent or checked.",
     telemetry: [
       ["CHANNEL", "SMS"],
-      ["CODE", "6 SEGMENTS"],
+      ["STATUS", "NOT CONFIGURED"],
     ],
   },
   "verify-email": {
-    eyebrow: "ONE MORE CONNECTION",
+    eyebrow: "EMAIL VERIFICATION",
     headline: (
       <>
-        A signal
+        Not part of
         <br />
-        <em>finding its way</em>
-        <br />
-        to you.
+        <em>this prototype.</em>
       </>
     ),
-    message: "Verification travels the same path your data would.",
+    message: "No email provider is connected, so no verification message is ever sent.",
     telemetry: [
       ["CHANNEL", "EMAIL"],
-      ["ROUTE", "VERIFIED PATH"],
+      ["STATUS", "NOT CONFIGURED"],
     ],
   },
   "forgot-password": {
-    eyebrow: "FIND YOUR WAY BACK",
+    eyebrow: "PASSWORD RESET",
     headline: (
       <>
-        A broken path
+        Reset by email
         <br />
-        can be <em>reconnected.</em>
+        <em>is not available.</em>
       </>
     ),
-    message: "The signal is interrupted, not lost.",
+    message: "No email provider is connected, so reset links cannot be sent.",
     telemetry: [
-      ["STATE", "INTERRUPTED"],
-      ["ACTION", "RECONNECTING"],
+      ["CHANNEL", "EMAIL"],
+      ["STATUS", "NOT CONFIGURED"],
     ],
   },
 };

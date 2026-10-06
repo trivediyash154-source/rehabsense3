@@ -50,7 +50,10 @@ export class AuthError extends Error {
 }
 
 const UNREACHABLE =
-  "We could not reach the authentication service. Nothing was submitted — please check that the backend is running and try again.";
+  "Unable to connect to the RehabSense API. Nothing was submitted — please try again.";
+
+/** A gateway answered instead of the API (it is down, restarting or unreachable). */
+const API_UNREACHABLE = "Unable to connect to the RehabSense API. Please try again in a moment.";
 
 async function authFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response: Response;
@@ -74,6 +77,10 @@ async function authFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
     | null;
 
   if (!response.ok) {
+    // No JSON body and a gateway status: the request never reached the API.
+    if (!body && [502, 503, 504].includes(response.status)) {
+      throw new AuthError("API_UNREACHABLE", API_UNREACHABLE, response.status);
+    }
     throw new AuthError(
       body?.code ?? "ERROR",
       body?.message ?? "Something went wrong. Please try again.",
@@ -139,6 +146,34 @@ export async function requestLiveTicket(sessionId: number): Promise<string> {
     body: JSON.stringify({ session_id: sessionId }),
   });
   return body.ticket;
+}
+
+export type ApiAvailability =
+  | { state: "available" }
+  | { state: "not-connected" | "unreachable"; message: string };
+
+/**
+ * Can this deployment reach the RehabSense API at all? Asked before the user
+ * types a password, so the form can say "unavailable" up front instead of
+ * failing after submit. `not-connected` is a deployment without an API
+ * (BACKEND_ORIGIN=none); `unreachable` is an API that is down or restarting.
+ */
+export async function checkApiAvailability(timeoutMs = 5000): Promise<ApiAvailability> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch("/api/health", { cache: "no-store", signal: controller.signal });
+    if (response.ok) return { state: "available" };
+    const body = (await response.json().catch(() => null)) as { code?: string; message?: string } | null;
+    if (body?.code === "BACKEND_NOT_CONNECTED") {
+      return { state: "not-connected", message: body.message ?? API_UNREACHABLE };
+    }
+    return { state: "unreachable", message: API_UNREACHABLE };
+  } catch {
+    return { state: "unreachable", message: API_UNREACHABLE };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Where a role should land after signing in. */

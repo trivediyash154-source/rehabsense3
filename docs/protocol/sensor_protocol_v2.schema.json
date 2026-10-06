@@ -1,0 +1,741 @@
+{
+  "device_to_server": {
+    "data": {
+      "$defs": {
+        "DualSample": {
+          "description": "One synchronous tick of the device: both IMUs and every force channel.",
+          "properties": {
+            "force": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "maxItems": 8,
+              "title": "Force",
+              "type": "array"
+            },
+            "imu_left": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ImuReading"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "imu_right": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ImuReading"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "seq": {
+              "minimum": 0,
+              "title": "Seq",
+              "type": "integer"
+            },
+            "ts": {
+              "title": "Ts",
+              "type": "number"
+            }
+          },
+          "required": [
+            "ts",
+            "seq"
+          ],
+          "title": "DualSample",
+          "type": "object"
+        },
+        "ImuReading": {
+          "description": "One MPU6050 reading. Accelerometer in g, gyroscope in deg/s.",
+          "properties": {
+            "ax": {
+              "title": "Ax",
+              "type": "number"
+            },
+            "ay": {
+              "title": "Ay",
+              "type": "number"
+            },
+            "az": {
+              "title": "Az",
+              "type": "number"
+            },
+            "gx": {
+              "title": "Gx",
+              "type": "number"
+            },
+            "gy": {
+              "title": "Gy",
+              "type": "number"
+            },
+            "gz": {
+              "title": "Gz",
+              "type": "number"
+            }
+          },
+          "required": [
+            "ax",
+            "ay",
+            "az",
+            "gx",
+            "gy",
+            "gz"
+          ],
+          "title": "ImuReading",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "samples": {
+          "items": {
+            "$ref": "#/$defs/DualSample"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "title": "Samples",
+          "type": "array"
+        },
+        "sent_ts": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sent Ts"
+        },
+        "type": {
+          "default": "data",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "samples"
+      ],
+      "title": "DataPacketV2",
+      "type": "object"
+    },
+    "event": {
+      "description": "Device -> server: an event stamped on the device clock (e.g. a button).",
+      "properties": {
+        "kind": {
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Kind",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "ts": {
+          "title": "Ts",
+          "type": "number"
+        },
+        "type": {
+          "default": "event",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ts",
+        "kind"
+      ],
+      "title": "DeviceEventV2",
+      "type": "object"
+    },
+    "hello": {
+      "$defs": {
+        "ForceChannelDescriptor": {
+          "properties": {
+            "calibration_ref": {
+              "anyOf": [
+                {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Calibration Ref"
+            },
+            "id": {
+              "maxLength": 32,
+              "minLength": 1,
+              "title": "Id",
+              "type": "string"
+            },
+            "location": {
+              "default": "UNSPECIFIED",
+              "maxLength": 32,
+              "title": "Location",
+              "type": "string"
+            },
+            "sensor": {
+              "default": "FSR402",
+              "maxLength": 40,
+              "title": "Sensor",
+              "type": "string"
+            },
+            "side": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Side"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "unit": {
+              "$ref": "#/$defs/ForceUnit",
+              "default": "adc_norm"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "title": "ForceChannelDescriptor",
+          "type": "object"
+        },
+        "ForceUnit": {
+          "enum": [
+            "adc_norm",
+            "N"
+          ],
+          "title": "ForceUnit",
+          "type": "string"
+        },
+        "ImuDescriptor": {
+          "properties": {
+            "accel_range_g": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "maximum": 32,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Accel Range G"
+            },
+            "config_readback_ok": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Config Readback Ok"
+            },
+            "gyro_range_dps": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "maximum": 4000,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Gyro Range Dps"
+            },
+            "i2c_address": {
+              "anyOf": [
+                {
+                  "maxLength": 8,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "I2C Address"
+            },
+            "model": {
+              "default": "MPU6050",
+              "maxLength": 40,
+              "title": "Model",
+              "type": "string"
+            },
+            "placement": {
+              "$ref": "#/$defs/Placement",
+              "default": "SHANK"
+            },
+            "side": {
+              "$ref": "#/$defs/Side"
+            },
+            "who_am_i": {
+              "anyOf": [
+                {
+                  "maxLength": 8,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Who Am I"
+            }
+          },
+          "required": [
+            "side"
+          ],
+          "title": "ImuDescriptor",
+          "type": "object"
+        },
+        "Placement": {
+          "description": "Where an IMU is strapped. Declared by whoever fits the device.",
+          "enum": [
+            "SHANK",
+            "THIGH",
+            "FOOT",
+            "WRIST",
+            "FOREARM",
+            "UPPER_ARM",
+            "OTHER"
+          ],
+          "title": "Placement",
+          "type": "string"
+        },
+        "Side": {
+          "enum": [
+            "LEFT",
+            "RIGHT"
+          ],
+          "title": "Side",
+          "type": "string"
+        }
+      },
+      "description": "First frame after the socket opens.",
+      "properties": {
+        "data_source": {
+          "anyOf": [
+            {
+              "enum": [
+                "SIMULATOR",
+                "PUBLIC_DATASET_REPLAY"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Data Source"
+        },
+        "device_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Device Id",
+          "type": "string"
+        },
+        "device_key": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Device Key"
+        },
+        "firmware_version": {
+          "default": "unknown",
+          "maxLength": 40,
+          "title": "Firmware Version",
+          "type": "string"
+        },
+        "force_channels": {
+          "items": {
+            "$ref": "#/$defs/ForceChannelDescriptor"
+          },
+          "maxItems": 8,
+          "title": "Force Channels",
+          "type": "array"
+        },
+        "imus": {
+          "items": {
+            "$ref": "#/$defs/ImuDescriptor"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "title": "Imus",
+          "type": "array"
+        },
+        "protocol_version": {
+          "title": "Protocol Version",
+          "type": "integer"
+        },
+        "sample_rate_hz": {
+          "title": "Sample Rate Hz",
+          "type": "number"
+        },
+        "scenario": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scenario"
+        },
+        "simulated": {
+          "default": false,
+          "title": "Simulated",
+          "type": "boolean"
+        },
+        "type": {
+          "default": "hello",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "device_id",
+        "sample_rate_hz",
+        "imus"
+      ],
+      "title": "HelloV2",
+      "type": "object"
+    },
+    "status": {
+      "description": "Optional periodic health frame. Every field is optional.",
+      "properties": {
+        "battery_pct": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Battery Pct"
+        },
+        "battery_v": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Battery V"
+        },
+        "free_heap": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Free Heap"
+        },
+        "i2c_errors_left": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "I2C Errors Left"
+        },
+        "i2c_errors_right": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "I2C Errors Right"
+        },
+        "imu_left_ok": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Imu Left Ok"
+        },
+        "imu_reinits_left": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Imu Reinits Left"
+        },
+        "imu_reinits_right": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Imu Reinits Right"
+        },
+        "imu_right_ok": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Imu Right Ok"
+        },
+        "ring_overflows": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ring Overflows"
+        },
+        "sample_overruns": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Overruns"
+        },
+        "type": {
+          "default": "status",
+          "title": "Type",
+          "type": "string"
+        },
+        "uptime_s": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uptime S"
+        },
+        "wifi_rssi_dbm": {
+          "anyOf": [
+            {
+              "maximum": 0,
+              "minimum": -130,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wifi Rssi Dbm"
+        }
+      },
+      "title": "DeviceStatusV2",
+      "type": "object"
+    }
+  },
+  "protocol_version": 2,
+  "server_to_device": {
+    "calibration_phase": {
+      "description": "Server -> device: the calibration phase changed (drives the LED).",
+      "properties": {
+        "instruction": {
+          "title": "Instruction",
+          "type": "string"
+        },
+        "phase": {
+          "title": "Phase",
+          "type": "string"
+        },
+        "sequence": {
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "type": {
+          "default": "calibration_phase",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sequence",
+        "phase",
+        "instruction"
+      ],
+      "title": "CalibrationPhaseV2",
+      "type": "object"
+    },
+    "hello_ack": {
+      "$defs": {
+        "Side": {
+          "enum": [
+            "LEFT",
+            "RIGHT"
+          ],
+          "title": "Side",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "accepted_force_channels": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Accepted Force Channels",
+          "type": "array"
+        },
+        "accepted_imus": {
+          "items": {
+            "$ref": "#/$defs/Side"
+          },
+          "title": "Accepted Imus",
+          "type": "array"
+        },
+        "accepted_sample_rate_hz": {
+          "title": "Accepted Sample Rate Hz",
+          "type": "number"
+        },
+        "calibration_health_seconds": {
+          "default": 1.0,
+          "title": "Calibration Health Seconds",
+          "type": "number"
+        },
+        "calibration_movement_seconds": {
+          "title": "Calibration Movement Seconds",
+          "type": "number"
+        },
+        "calibration_still_seconds": {
+          "title": "Calibration Still Seconds",
+          "type": "number"
+        },
+        "protocol_version": {
+          "default": 2,
+          "title": "Protocol Version",
+          "type": "integer"
+        },
+        "server_time": {
+          "title": "Server Time",
+          "type": "number"
+        },
+        "session_id": {
+          "title": "Session Id",
+          "type": "integer"
+        },
+        "type": {
+          "default": "hello_ack",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id",
+        "server_time",
+        "accepted_sample_rate_hz",
+        "accepted_imus",
+        "accepted_force_channels",
+        "calibration_still_seconds",
+        "calibration_movement_seconds"
+      ],
+      "title": "HelloAckV2",
+      "type": "object"
+    }
+  }
+}

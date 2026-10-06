@@ -1,3 +1,5 @@
+import { publicWsOrigin } from "@/lib/config";
+
 /**
  * Typed client for the RehabSense backend.
  *
@@ -21,7 +23,7 @@ export const API_BASE = "";
  * straight to the backend and authorises itself with a short-lived ticket
  * from `/api/auth/ws-ticket` instead of the cookie.
  */
-export const WS_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+export const WS_BASE = publicWsOrigin();
 
 export class ApiError extends Error {
   constructor(
@@ -54,6 +56,14 @@ export async function apiFetch<T>(
 
   const body = await response.json().catch(() => null);
   if (!response.ok) {
+    // No JSON body and a gateway status: the request never reached the API.
+    if (!body && [502, 503, 504].includes(response.status)) {
+      throw new ApiError(
+        response.status,
+        "API_UNREACHABLE",
+        "Unable to connect to the RehabSense API. Please try again in a moment.",
+      );
+    }
     const error = body as { code?: string; message?: string } | null;
     throw new ApiError(
       response.status,
@@ -364,6 +374,5 @@ export const api = {
  * short-lived ticket that is valid only for this session id.
  */
 export function liveSocketUrl(sessionId: number, ticket: string): string {
-  const base = WS_BASE.replace(/^http/, "ws");
-  return `${base}/ws/live/${sessionId}?ticket=${encodeURIComponent(ticket)}`;
+  return `${WS_BASE}/ws/live/${sessionId}?ticket=${encodeURIComponent(ticket)}`;
 }

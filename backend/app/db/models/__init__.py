@@ -17,6 +17,20 @@ from app.db.models.focus import (  # noqa: F401
 from app.db.models.notification import Notification  # noqa: F401
 from app.db.models.patient import PatientAssignment, PatientProfile  # noqa: F401
 from app.db.models.report import Report, ReportShare  # noqa: F401
+from app.db.models.sensing import (  # noqa: F401
+    ActivityResult,
+    DataUseConsent,
+    DeviceCalibration,
+    ModelVersion,
+    MovementAssessment,
+    PatientBaseline,
+    Recording,
+    RecordingArtifact,
+    RepetitionResult,
+    SensorSampleChunk,
+    SessionLabel,
+    SessionMarker,
+)
 from app.db.models.session import (  # noqa: F401
     MetricSnapshot,
     RepEvent,
@@ -27,7 +41,19 @@ from app.db.models.session import (  # noqa: F401
 from app.db.models.user import User  # noqa: F401
 
 __all__ = [
+    "ActivityResult",
     "AuditLog",
+    "DataUseConsent",
+    "DeviceCalibration",
+    "ModelVersion",
+    "MovementAssessment",
+    "PatientBaseline",
+    "Recording",
+    "RecordingArtifact",
+    "RepetitionResult",
+    "SensorSampleChunk",
+    "SessionLabel",
+    "SessionMarker",
     "Device",
     "FocusEvent",
     "FocusReminder",

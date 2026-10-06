@@ -1,5 +1,6 @@
 "use client";
 
+import { publicWsOrigin } from "@/lib/config";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 
@@ -117,7 +118,7 @@ export function IntegrationReport() {
         method: "POST",
         body: JSON.stringify({ session_id: sessionId }),
       });
-      const origin = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/^http/, "ws");
+      const origin = publicWsOrigin();
       return await new Promise<string>((resolve, reject) => {
         const socket = new WebSocket(`${origin}/ws/live/${sessionId}?ticket=${t.ticket}`);
         const timer = setTimeout(() => {

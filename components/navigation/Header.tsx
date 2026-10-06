@@ -6,6 +6,7 @@ import { Menu, X, ArrowUpRight } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { ThemeToggle } from "@/components/ui/Providers";
 import { LiteToggle } from "@/components/three/SceneContext";
+import { CookieSettingsButton } from "@/components/ui/CookieConsent";
 
 const links: [string, string, string][] = [
   ["Product", "/#product", "product"],
@@ -169,6 +170,8 @@ export function Footer() {
           <Link href="/#responsible">Responsible use &amp; privacy</Link>
           <Link href="/#research">Technical foundation</Link>
           <Link href="/contact">Contact the team</Link>
+          <Link href="/cookies">Cookie policy</Link>
+          <CookieSettingsButton className="footer-link-button" />
         </nav>
         <div className="footer-meta">
           <div className="footer-controls">

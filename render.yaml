@@ -1,0 +1,44 @@
+# Render Blueprint: the RehabSense FastAPI backend on Render's FREE plan (no
+# card). The Next.js frontend is deployed on Vercel; PostgreSQL is on Neon.
+#
+# Free-plan limits, stated plainly: 512 MB RAM and a small shared CPU, the
+# service sleeps after ~15 min without traffic (the next request waits ~1 min
+# while it wakes, and live sessions in memory are lost), and the disk is
+# wiped on every restart (stored export files; database data is safe in Neon).
+services:
+  - type: web
+    name: rehabsense-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      # Entered in the Render dashboard when the Blueprint is applied; never in git.
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: https://rehabsense-platform.vercel.app
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: STORAGE_BACKEND
+        value: local
+      - key: STORAGE_LOCAL_DIR
+        value: /data/storage
+      # The simulator is part of the product and is always labelled SIMULATED.
+      - key: ALLOW_SIMULATED_DEVICES
+        value: "true"
+      # 512 MB host: the single-IMU fallback forest needs ~440 MB on its own.
+      # Two-IMU activity inference stays on; single-IMU sessions report
+      # "model disabled on this deployment".
+      - key: ML_ACTIVITY_MODEL_SINGLE
+        value: none
+      - key: RUN_MIGRATIONS_ON_START
+        value: "true"

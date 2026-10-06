@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { AuthScreen } from "@/components/auth/AuthScreen";
 
 export const metadata: Metadata = {
-  title: "Verify your phone",
-  description: "RehabSense research prototype. Message delivery is not configured, so no email or code is sent.",
+  title: "Phone verification unavailable",
+  description: "Phone verification is not available in this RehabSense research prototype: no SMS provider is connected.",
   robots: { index: false, follow: false },
 };
 

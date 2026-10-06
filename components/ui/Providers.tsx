@@ -14,6 +14,7 @@ import { MotionConfig } from "framer-motion";
 import { Sun, Moon, Monitor } from "lucide-react";
 import { themeKey, themeLabels, type Theme, type ThemePreference } from "@/lib/theme";
 import { safeRoute, track } from "@/lib/analytics";
+import { storePreference } from "@/lib/consent";
 
 type ThemeContextValue = {
   theme: Theme;
@@ -81,12 +82,9 @@ export function Providers({ children }: { children: ReactNode }) {
 
   const setPreference = useCallback((next: ThemePreference) => {
     updatePreference(next);
-    try {
-      if (next === "system") localStorage.removeItem(themeKey);
-      else localStorage.setItem(themeKey, next);
-    } catch {
-      // Preference simply will not persist. Not an error worth surfacing.
-    }
+    // Remembered on this device only with preference consent (lib/consent);
+    // otherwise it applies to this visit and is not written down.
+    storePreference(themeKey, next === "system" ? null : next);
     track("theme_changed", {
       theme:
         next === "system"

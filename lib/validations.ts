@@ -107,11 +107,16 @@ export function makeAuthSchema(mode: AuthMode) {
 
       if (mode === "signup") {
         if (data.name.trim().length < 2) error("name", "Enter your full name.");
-        if (!nationalNumber.test(data.phone.trim()) || digits.length < 6) {
-          error("phone", "Enter a valid phone number.");
-        }
-        if (!dialCodes.some((entry) => entry.code === data.dialCode)) {
-          error("dialCode", "Select a country code.");
+        // Optional: nothing verifies or uses a phone number in this prototype,
+        // so it must not stand between a person and an account. Checked only
+        // when one is entered.
+        if (data.phone.trim()) {
+          if (!nationalNumber.test(data.phone.trim()) || digits.length < 6) {
+            error("phone", "Enter a valid phone number, or leave it empty.");
+          }
+          if (!dialCodes.some((entry) => entry.code === data.dialCode)) {
+            error("dialCode", "Select a country code.");
+          }
         }
         if (data.password.length < 12) error("password", "Use at least 12 characters.");
         if (data.password.length > 200) error("password", "Use fewer than 200 characters.");

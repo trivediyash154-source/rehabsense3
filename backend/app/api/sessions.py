@@ -43,7 +43,8 @@ from app.schemas.session import (
     SessionEnd,
     SessionPublic,
 )
-from app.services import authz, report_service, session_service, sim_runner
+from app.services import authz, report_service, sensing_service, session_service, sim_runner
+from app.services.hw_registry import hw_registry
 from app.services.live_registry import registry
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -102,9 +103,9 @@ def list_sessions(
     offset: int = Query(default=0, ge=0),
 ):
     if start_date and end_date and start_date > end_date:
-        from app.core.exceptions import AppError
+        from app.core.exceptions import BadRequest
 
-        raise AppError("start_date must not be after end_date")
+        raise BadRequest("start_date must not be after end_date")
     allowed = authz.visible_patient_ids(db, user)
     if patient_id is not None:
         authz.get_patient_or_403(db, user, patient_id)
@@ -188,9 +189,13 @@ async def end_session(session_id: int, payload: SessionEnd, user: CurrentUser, d
     # A stream must not outlive the session it was feeding.
     sim_runner.stop(session_id)
 
-    # The authoritative summary comes from the live processor when one exists;
-    # otherwise from whatever was persisted during the session.
-    summary = await registry.finalize(session_id, payload.reported_pain)
+    # The authoritative summary comes from the live processor when one exists
+    # (hardware v2 or per-leg v1); otherwise from whatever was persisted.
+    summary = await hw_registry.finalize(session_id)
+    if summary is None:
+        summary = await registry.finalize(session_id, payload.reported_pain)
+    if summary is None and session.protocol_version == 2:
+        summary = sensing_service.summary_from_persisted(db, session)
     if summary is None:
         summary = report_service.summary_from_persisted(db, session)
 
@@ -198,9 +203,13 @@ async def end_session(session_id: int, payload: SessionEnd, user: CurrentUser, d
         db, session, summary=summary, reported_pain=payload.reported_pain,
         notes=payload.notes, actor=user,
     )
+    if session.protocol_version == 2:
+        # Recording metadata + integrity, computed from the stored raw samples.
+        sensing_service.finalize_recording(db, session.id)
     db.commit()
     db.refresh(session)
     await registry.close(session_id)
+    await hw_registry.close(session_id)
     return _detail(db, user, session)
 
 

@@ -47,7 +47,9 @@ def register_from_hello(session_id: int, leg: Leg, hello: Hello) -> int:
             device = Device(device_id=hello.device_id)
             db.add(device)
 
-        device.kind = DeviceKind.SIMULATOR if hello.simulated else DeviceKind.HARDWARE
+        # Protocol v1 nodes cannot authenticate, so a non-simulated v1 node is
+        # UNVERIFIED -- never assumed to be physical hardware.
+        device.kind = DeviceKind.SIMULATOR if hello.simulated else DeviceKind.UNVERIFIED
         device.leg = leg
         device.firmware_version = hello.firmware_version
         device.protocol_version = hello.protocol_version

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { assertDeploymentConfig, backendConnected, backendOrigin } from "./lib/config.server";
 
 /**
  * Security headers are conservative on purpose: this prototype loads no
@@ -23,8 +24,11 @@ const securityHeaders = [
  * any site send it; same-origin lets us keep `SameSite=Lax` and `HttpOnly`,
  * and lets middleware read the session server-side.
  */
-const BACKEND_ORIGIN =
-  process.env.BACKEND_ORIGIN ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Fails the build on Vercel when the API/WS/site URLs are missing or not
+// https/wss -- a deployment must never silently point at localhost.
+assertDeploymentConfig();
+// null only for an explicit frontend-only deployment (BACKEND_ORIGIN=none).
+const BACKEND_ORIGIN = backendConnected() ? backendOrigin() : null;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -38,7 +42,13 @@ const nextConfig: NextConfig = {
       // /api/events) still win; everything else under /api falls through to
       // the backend.
       beforeFiles: [],
-      afterFiles: [{ source: "/api/:path*", destination: `${BACKEND_ORIGIN}/api/:path*` }],
+      afterFiles: [
+        BACKEND_ORIGIN
+          ? { source: "/api/:path*", destination: `${BACKEND_ORIGIN}/api/:path*` }
+          : // No API in this deployment: every backend path gets an explicit
+            // 503 BACKEND_NOT_CONNECTED instead of an HTML 404.
+            { source: "/api/:path*", destination: "/backend-unavailable" },
+      ],
       fallback: [],
     };
   },

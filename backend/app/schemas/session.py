@@ -42,6 +42,8 @@ class SessionPublic(BaseModel):
     notes: str | None = None
     calibration_state: CalibrationState
     analytics_version: str | None = None
+    protocol_version: int | None = None
+    recording_mode: str | None = None
     summary: dict | None = None
     confidence: dict | None = None
 
@@ -117,3 +119,81 @@ class SimulateRequest(BaseModel):
         if value not in SCENARIOS:
             raise ValueError(f"Unknown scenario. Choose one of: {', '.join(SCENARIOS)}.")
         return value
+
+
+class SimulateHardwareRequest(BaseModel):
+    """Start the dual-IMU (protocol v2) simulator for an active session."""
+
+    scenario: str = "SYMMETRIC"
+    duration_s: int = Field(default=60, ge=5, le=900)
+    seed: int | None = None
+
+    @field_validator("scenario")
+    @classmethod
+    def _known(cls, value: str) -> str:
+        from app.simulator.dual_imu_simulator import SCENARIOS as HW_SCENARIOS
+
+        if value not in HW_SCENARIOS:
+            raise ValueError(f"Unknown scenario. Choose one of: {', '.join(HW_SCENARIOS)}.")
+        return value
+
+
+class SessionLabelCreate(BaseModel):
+    """A therapist label on a time range of a recorded session."""
+
+    t_start: float = Field(ge=0)
+    t_end: float = Field(ge=0)
+    exercise_type: ExerciseType | None = None
+    activity: str | None = Field(default=None, max_length=40)
+    repetition_index: int | None = Field(default=None, ge=1, le=10000)
+    side: Leg | None = None
+    movement_phase: str | None = None
+    quality_rating: int | None = Field(default=None, ge=1, le=5)
+    notes: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("movement_phase")
+    @classmethod
+    def _phase(cls, value: str | None) -> str | None:
+        from app.sensing.repetitions import PHASES
+
+        if value is not None and value not in PHASES:
+            raise ValueError(f"movement_phase must be one of {', '.join(PHASES)}")
+        return value
+
+    @field_validator("t_end")
+    @classmethod
+    def _order(cls, value: float, info) -> float:
+        start = info.data.get("t_start")
+        if start is not None and value <= start:
+            raise ValueError("t_end must be after t_start")
+        return value
+
+
+class BaselineCreate(BaseModel):
+    """Set a personal baseline from one or more completed v2 sessions."""
+
+    session_ids: list[int] = Field(min_length=1, max_length=10)
+
+
+class ConsentUpdate(BaseModel):
+    granted: bool
+    document_ref: str | None = Field(default=None, max_length=200)
+
+
+class ResearchRecordingCreate(BaseModel):
+    """Start a research recording: raw dual-IMU + force data is the product."""
+
+    patient_id: int
+    exercise_type: ExerciseType
+    # Pseudonymous code from the study log (never a name). Letters, digits, - _
+    subject_code: str = Field(min_length=2, max_length=32, pattern=r"^[A-Za-z0-9_-]+$")
+    protocol_id: str = Field(default="pilot-v1", max_length=40)
+    task: str | None = Field(default=None, max_length=120)
+    conditions: str | None = Field(default=None, max_length=300)
+    operator_notes: str | None = Field(default=None, max_length=1000)
+
+
+class MarkerCreate(BaseModel):
+    label: str = Field(min_length=1, max_length=60)
+    kind: str | None = Field(default=None, max_length=32)
+    note: str | None = Field(default=None, max_length=300)

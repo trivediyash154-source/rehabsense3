@@ -1,0 +1,16 @@
+{
+  "type": "hello",
+  "protocol_version": 2,
+  "device_id": "rehabsense-dual-001",
+  "firmware_version": "dual-0.2.0",
+  "sample_rate_hz": 100,
+  "imus": [
+    {"side": "LEFT", "placement": "SHANK", "model": "MPU6050", "i2c_address": "0x68", "accel_range_g": 4, "gyro_range_dps": 500, "who_am_i": "0x68", "config_readback_ok": true},
+    {"side": "RIGHT", "placement": "SHANK", "model": "MPU6050", "i2c_address": "0x69", "accel_range_g": 4, "gyro_range_dps": 500, "who_am_i": "0x68", "config_readback_ok": true}
+  ],
+  "force_channels": [
+    {"id": "heel_left", "side": "LEFT", "location": "HEEL", "sensor": "FSR402", "unit": "adc_norm"},
+    {"id": "heel_right", "side": "RIGHT", "location": "HEEL", "sensor": "FSR402", "unit": "adc_norm"}
+  ],
+  "device_key": "issued-by-POST-/api/devices/register"
+}

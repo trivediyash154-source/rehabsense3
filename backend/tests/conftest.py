@@ -12,6 +12,10 @@ _tmp = tempfile.mkdtemp()
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{_tmp}/test.db")
 os.environ.setdefault("SECRET_KEY", "test-secret-not-for-production-0123456789abcdef")
 os.environ.setdefault("DEBUG", "true")
+# Tests never depend on whatever model bundles happen to be on disk; tests
+# that need one build a tiny bundle themselves.
+os.makedirs(f"{_tmp}/models", exist_ok=True)
+os.environ.setdefault("ML_MODEL_DIR", f"{_tmp}/models")
 
 from app.db.database import Base, SessionLocal, engine  # noqa: E402
 from app.db.seed import seed_exercises  # noqa: E402

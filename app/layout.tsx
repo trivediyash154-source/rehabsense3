@@ -7,7 +7,9 @@ import { SceneLayer } from "@/components/three/SceneLayer";
 import { SceneStatusProvider } from "@/components/three/SceneContext";
 import { CursorField } from "@/components/ui/Primitives";
 import { themeBootScript } from "@/lib/theme";
+import { CookieConsent } from "@/components/ui/CookieConsent";
 import "./globals.css";
+import { siteUrl as siteUrl_ } from "@/lib/config.server";
 
 // Self-hosted at build time: no runtime request to a third-party font CDN.
 const sans = Inter({
@@ -24,7 +26,7 @@ const mono = IBM_Plex_Mono({
   variable: "--font-mono",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const siteUrl = siteUrl_();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -83,6 +85,7 @@ export default async function RootLayout({
               <SceneLayer />
               <CursorField />
               <div className="page-layer">{children}</div>
+              <CookieConsent />
             </SceneStatusProvider>
           </AuthProvider>
         </Providers>

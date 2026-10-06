@@ -1,0 +1,3 @@
+{"type": "status", "battery_v": 3.91, "wifi_rssi_dbm": -61, "imu_left_ok": true, "imu_right_ok": false,
+ "free_heap": 182344, "uptime_s": 412.3, "ring_overflows": 0, "i2c_errors_left": 0,
+ "i2c_errors_right": 37, "imu_reinits_left": 0, "imu_reinits_right": 2, "sample_overruns": 0}

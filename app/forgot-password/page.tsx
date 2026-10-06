@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { AuthScreen } from "@/components/auth/AuthScreen";
 
 export const metadata: Metadata = {
-  title: "Reset your password",
-  description: "RehabSense research prototype. Message delivery is not configured, so no email or code is sent.",
+  title: "Password reset unavailable",
+  description: "Password reset is not available in this RehabSense research prototype: no email provider is connected.",
   robots: { index: false, follow: false },
 };
 

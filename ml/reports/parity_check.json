@@ -1,0 +1,12 @@
+{
+  "bundle": "activity_bilateral/v1",
+  "windows": 800,
+  "prediction_agreement": 0.9838,
+  "median_relative_feature_difference": 0.0889,
+  "p95_relative_feature_difference": 0.189,
+  "hardware_path_status_counts": {
+    "OK": 800
+  },
+  "what_differs": "upsampling 25->100 Hz, MPU6050 quantisation, 1 ms jitter, then the server's anti-alias + resample back to 25 Hz",
+  "scope": "Preprocessing consistency on public data replayed in device format. NOT hardware validation."
+}

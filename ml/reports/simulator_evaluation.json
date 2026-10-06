@@ -1,0 +1,153 @@
+{
+  "evidence_level": "SIMULATOR ONLY -- synthetic kinematics with known ground truth. Not RehabSense hardware performance. Not clinical validation.",
+  "created": "2026-10-06T10:16:09.461072+00:00",
+  "rom_proxy": {
+    "SQUAT": {
+      "LEFT": {
+        "detected_deg": 34.46,
+        "true_deg": 35.0,
+        "error_pct": -1.5
+      },
+      "RIGHT": {
+        "detected_deg": 34.86,
+        "true_deg": 35.0,
+        "error_pct": -0.4
+      }
+    },
+    "SIT_TO_STAND": {
+      "LEFT": {
+        "detected_deg": 21.69,
+        "true_deg": 22.0,
+        "error_pct": -1.4
+      },
+      "RIGHT": {
+        "detected_deg": 22.05,
+        "true_deg": 22.0,
+        "error_pct": 0.2
+      }
+    },
+    "WALK": {
+      "LEFT": {
+        "detected_deg": 39.37,
+        "true_deg": 43.5,
+        "error_pct": -9.4
+      },
+      "RIGHT": {
+        "detected_deg": 39.41,
+        "true_deg": 43.5,
+        "error_pct": -9.3
+      }
+    },
+    "KNEE_EXTENSION": {
+      "LEFT": {
+        "detected_deg": 64.63,
+        "true_deg": 65.0,
+        "error_pct": -0.6
+      },
+      "RIGHT": {
+        "detected_deg": 65.17,
+        "true_deg": 65.0,
+        "error_pct": 0.3
+      }
+    },
+    "STEP_UP": {
+      "LEFT": {
+        "detected_deg": 39.87,
+        "true_deg": 40.0,
+        "error_pct": -0.3
+      },
+      "RIGHT": {
+        "detected_deg": 40.33,
+        "true_deg": 40.0,
+        "error_pct": 0.8
+      }
+    }
+  },
+  "repetitions": {
+    "SQUAT": {
+      "detected": {
+        "LEFT": 16,
+        "RIGHT": 16
+      },
+      "simulated_cycles_per_side_approx": 17.7,
+      "note": "approximate: includes the slowed calibration movement; rep detection excludes cycles still open at the end of the session"
+    },
+    "SIT_TO_STAND": {
+      "detected": {
+        "LEFT": 13,
+        "RIGHT": 13
+      },
+      "simulated_cycles_per_side_approx": 14.7,
+      "note": "approximate: includes the slowed calibration movement; rep detection excludes cycles still open at the end of the session"
+    },
+    "WALK": {
+      "detected": {
+        "LEFT": 45,
+        "RIGHT": 46
+      },
+      "simulated_cycles_per_side_approx": 48.2,
+      "note": "approximate: includes the slowed calibration movement; rep detection excludes cycles still open at the end of the session"
+    },
+    "KNEE_EXTENSION": {
+      "detected": {
+        "LEFT": 7,
+        "RIGHT": 8
+      },
+      "simulated_cycles_per_side_approx": 8.8,
+      "note": "approximate: includes the slowed calibration movement; rep detection excludes cycles still open at the end of the session"
+    },
+    "STEP_UP": {
+      "detected": {
+        "LEFT": 11,
+        "RIGHT": 8
+      },
+      "simulated_cycles_per_side_approx": 10.8,
+      "note": "approximate: includes the slowed calibration movement; rep detection excludes cycles still open at the end of the session"
+    }
+  },
+  "asymmetry_vs_severity": {
+    "SQUAT": {
+      "0.0": 0.0089,
+      "0.2": 0.0807,
+      "0.4": 0.1715,
+      "0.6": 0.2622,
+      "monotonic_increase": true
+    },
+    "WALK": {
+      "0.0": 0.084,
+      "0.2": 0.2084,
+      "0.4": 0.3007,
+      "0.6": 0.3952,
+      "monotonic_increase": true
+    },
+    "SIT_TO_STAND": {
+      "0.0": 0.0131,
+      "0.2": 0.0786,
+      "0.4": 0.1695,
+      "0.6": 0.2489,
+      "monotonic_increase": true
+    }
+  },
+  "fault_detection": {
+    "packet_loss": {
+      "expected_check": "missing_samples",
+      "detected": true,
+      "verdict": "USABLE_WITH_WARNINGS"
+    },
+    "right_dropout": {
+      "expected_check": "right_imu_connected",
+      "detected": true,
+      "verdict": "NOT_USABLE"
+    },
+    "frozen_left": {
+      "expected_check": "left_imu_frozen",
+      "detected": true,
+      "verdict": "NOT_USABLE"
+    },
+    "impossible_value": {
+      "expected_check": "right_abnormal_values",
+      "detected": true,
+      "verdict": "NOT_USABLE"
+    }
+  }
+}

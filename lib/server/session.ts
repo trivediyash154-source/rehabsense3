@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import type { SessionUser } from "@/lib/auth";
+import { backendConnected, backendOrigin } from "@/lib/config.server";
 
 /**
  * Resolve the signed-in user on the server, for the first paint.
@@ -9,10 +10,11 @@ import type { SessionUser } from "@/lib/auth";
  * own cookie and asks the backend, so the answer is the backend's, not a
  * claim decoded from an unverified token.
  */
-const BACKEND_ORIGIN =
-  process.env.BACKEND_ORIGIN ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const BACKEND_ORIGIN = backendOrigin();
 
 export async function getServerUser(): Promise<SessionUser | null> {
+  // Frontend-only deployment (BACKEND_ORIGIN=none): nobody can be signed in.
+  if (!backendConnected()) return null;
   const jar = await cookies();
   const cookieHeader = jar.toString();
   if (!cookieHeader) return null;

@@ -6,8 +6,16 @@ bilateral movement capture, time-synchronised comparison, and explainable
 recovery indicators — without claiming capabilities the system does not have.
 
 **RehabSense is not a medical device.** It is not certified, cleared or
-clinically validated. Every number shown in this interface is invented to
-demonstrate a layout. Nothing here diagnoses, treats or prescribes.
+clinically validated. Demo figures are invented and labelled as demo data;
+figures from the backend are research outputs from recorded (or explicitly
+SIMULATED) sessions. Nothing here diagnoses, treats or prescribes.
+
+Live frontend: https://rehabsense-platform.vercel.app (frontend-only until the
+API is hosted) · Vercel: [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md) ·
+Deployment: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (steps) ·
+[docs/DEPLOYMENT_AUDIT.md](docs/DEPLOYMENT_AUDIT.md) (what runs where) ·
+[docs/POSTGRESQL_VALIDATION.md](docs/POSTGRESQL_VALIDATION.md) ·
+[docs/HARDWARE_VALIDATION_STATUS.md](docs/HARDWARE_VALIDATION_STATUS.md).
 
 ---
 
@@ -26,15 +34,17 @@ npm run dev        # http://localhost:3000
 **Full stack** — three terminals:
 
 ```bash
-# 1. backend
+# 1. backend (development posture: SQLite, local storage, simulators allowed)
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
 alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 
-# 2. frontend
-NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev
+# 2. frontend (BACKEND_ORIGIN / NEXT_PUBLIC_WS_URL default to localhost:8000 in dev)
+cp .env.example .env.local
+npm run dev
 
 # 3. seed a demo dataset by driving the real pipeline
 cd backend && python -m scripts.seed_demo
@@ -48,6 +58,24 @@ cd backend
 python -m app.simulator.sensor_simulator --session-id 1 \
     --exercise WALK --operated-leg LEFT --scenario ASYMMETRY --seed 42 --fsr
 ```
+
+### Hardware v2: one ESP32, two MPU6050s, force sensors
+
+The target device streams over protocol v2 (`docs/SENSOR_PROTOCOL_V2.md`) to
+`/ws/ingest/v2/{session_id}`. In the workspace, open **Hardware**, choose an
+exercise, then either **Start simulated device** (clearly labelled SIMULATED
+DATA) or **Wait for real ESP32** and flash `firmware/rehabsense_dual_imu/` with
+that session id. From the terminal:
+
+```bash
+cd backend
+python -m app.simulator.dual_imu_simulator --session-id 1 --exercise SQUAT --scenario ASYMMETRIC
+python -m app.simulator.dual_imu_simulator --list-scenarios
+```
+
+Architecture, ML stages, domain-gap strategy and validation status:
+[docs/HARDWARE_ML_ARCHITECTURE.md](docs/HARDWARE_ML_ARCHITECTURE.md). Training
+code: [ml/README.md](ml/README.md).
 
 ### Accounts
 
@@ -76,8 +104,10 @@ npm run typecheck  # tsc --noEmit
 npm run lint       # eslint
 ```
 
-Node 20+ is expected. No environment variables are required to run the site;
-every integration is off by default and says so in the UI.
+Node 20.9+ is expected. Development needs no environment variables. A Vercel
+build **fails on purpose** unless `BACKEND_ORIGIN` (https), `NEXT_PUBLIC_WS_URL`
+(wss) and `NEXT_PUBLIC_SITE_URL` (https) are set — there is no silent localhost
+fallback in production.
 
 ---
 
@@ -85,32 +115,18 @@ every integration is off by default and says so in the UI.
 
 | Area | Status |
 |---|---|
-| Landing page, navigation, theming | Fully implemented |
-| Sign in / sign up / reset / verify screens | Fully implemented **UI**; authentication is **not connected** |
-| Contact form | Fully implemented, validated client- and server-side; **delivery is off** until configured |
-| Demo dashboard | Fully implemented against **illustrative, invented data** |
-| Product event logging | Implemented with a strict allowlist; **collection is off** by default |
-| Sensor hardware, FastAPI service, PostgreSQL, analytics pipeline | **Not part of this repository** |
-
-### Authentication — demo mode
-
-`/api/auth` answers every request with `503 AUTH_NOT_CONFIGURED` and never reads
-the request body. The client (`lib/auth.ts`) sends only the action name, so an
-email, password, phone number or verification code entered into the form **never
-leaves the browser**. The screens show a persistent "Demo mode" banner, and the
-resend cooldown only starts if a provider actually accepts a delivery request —
-so the timer can never imply a message that was not sent.
-
-To connect real authentication:
-
-1. Implement `AuthAdapter` in `lib/server/auth-adapter.ts` (or delegate to a
-   reviewed library) and return it from `getAuthAdapter()`.
-2. Put provider secrets in **server-only** environment variables. Never prefix a
-   secret with `NEXT_PUBLIC_` — that inlines it into the client bundle.
-3. Set `AUTH_ADAPTER_ENABLED=true`.
-4. Change `lib/auth.ts` to submit credentials over HTTPS to your server route.
-   Until step 1 exists, this step would transmit secrets to a route that
-   discards them, so it is deliberately left undone.
+| Landing page, navigation, theming | Implemented |
+| Sign up / sign in | Implemented against the FastAPI backend (Argon2id, HttpOnly cookie) |
+| Password reset email, SMS verification, social sign-in | **Not configured**; the screens say so |
+| Contact form | Implemented; **delivery is off** until configured |
+| Demo dashboard | Implemented against **illustrative, invented data**, labelled as such |
+| Workspace (patients, sessions, live view, hardware lab) | Implemented against the backend |
+| FastAPI service, PostgreSQL schema, ingestion, analytics, ML inference | Implemented; tested on SQLite and PostgreSQL 16.2 |
+| ESP32 firmware (1 ESP32 + 2×MPU6050 + FSR) | Implemented, compiles; **not tested on a physical board** |
+| ML activity model | Validated on public datasets only; **0 human-labelled physical recordings** |
+| Clinical validity | **None.** Not a medical device |
+| Frontend on Vercel | **Deployed, frontend-only**: https://rehabsense-platform.vercel.app (no API connected yet; sign-in says so). See VERCEL_DEPLOYMENT.md |
+| API host, managed PostgreSQL, object storage | **Not deployed**; see docs/DEPLOYMENT.md |
 
 ### Contact delivery
 
@@ -144,18 +160,20 @@ honoured before anything is queued.
 
 ## Environment variables
 
-See `.env.example`. All are optional.
+Frontend: `.env.example` (development defaults to localhost). Backend:
+`backend/.env.example`.
 
 | Variable | Purpose |
 |---|---|
+| `BACKEND_ORIGIN` | Server-only. API origin that `/api/*` is proxied to. **Required on Vercel:** an https URL, or `none` for a frontend-only deployment. |
+| `NEXT_PUBLIC_WS_URL` | API WebSocket origin for the live view. **Required (wss) on Vercel** when an API is connected. |
 | `CONTACT_DELIVERY_URL` | HTTPS endpoint receiving contact submissions. Enables the form. |
 | `CONTACT_DELIVERY_TOKEN` | Optional bearer token for that endpoint. |
 | `CONTACT_RATE_LIMIT` / `CONTACT_RATE_WINDOW_SECONDS` | Per-process limiter (default 5 per 600s). |
 | `NEXT_PUBLIC_ANALYTICS_ENABLED` | Must be `true` for any event to be sent. |
 | `ANALYTICS_INGEST_URL` / `ANALYTICS_INGEST_TOKEN` | Server-side event collector. |
-| `AUTH_ADAPTER_ENABLED` | Reserved. Does **not** enable auth on its own. |
 | `NEXT_PUBLIC_CONTACT_PREFILL_NAME` | Optional demo convenience; leave empty for a public form. |
-| `NEXT_PUBLIC_SITE_URL` | Canonical origin for metadata and the sitemap. |
+| `NEXT_PUBLIC_SITE_URL` | Canonical origin for metadata and the sitemap. https on Vercel; defaults there to the project's production domain. |
 
 ---
 
@@ -207,17 +225,27 @@ themes · no horizontal overflow from 360px up.
 ## Project layout
 
 ```
-app/          routes, API routes, global stylesheet
-components/   auth, brand, charts, contact, dashboard, hero, navigation, sections, three, ui
-lib/          theme, analytics allowlist, validation, auth boundary, audit log, rate limit
-lib/server/   server-only auth adapter seam
+app/          Next.js routes (deployed to Vercel)
+components/   UI, workspace, hardware lab
+lib/          API client, config (config.ts browser / config.server.ts server-only)
+backend/      FastAPI API, WebSockets, DB models, migrations, inference (Python host, not Vercel)
+ml/           training code, reports, versioned model bundles (training env only)
+firmware/     ESP32 firmware
+docs/         architecture, protocol, validation status, deployment
+scripts/      deployment checks
 ```
+
+The frontend stays at the repository root rather than in `frontend/`: moving
+it would change the Vercel root directory and every import path for no
+functional gain. `.vercelignore` keeps `backend/`, `ml/` and `firmware/` out
+of the Vercel upload.
 
 ## Known limitations
 
-- No authentication, no accounts, no sessions.
-- No database, no patient records, no sensor ingestion.
-- Dashboard values are invented and labelled as such throughout.
+- No physical hardware validation yet; no clinical validation.
+- The Python API must run as a single process (WebSocket sessions and the
+  live processors are held in memory); see docs/DEPLOYMENT_AUDIT.md.
+- Demo dashboard values are invented and labelled as such throughout.
 - The rate limiter is per-process; use a shared limiter in production.
 - A named data controller, retention periods and user-rights processes must be
   established before collecting any real personal or health data.

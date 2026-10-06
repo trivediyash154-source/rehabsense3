@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:deploy": "bash scripts/deployment_check.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -36,5 +37,8 @@
     "eslint-config-next": "^15.3.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20.9.0 <25"
   }
 }

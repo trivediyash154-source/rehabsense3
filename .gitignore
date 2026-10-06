@@ -20,3 +20,29 @@ backend/.venv
 *.db-shm
 *.db-wal
 
+
+# ML: virtualenv, extracted datasets and caches (never committed).
+ml/.venv
+ml/data/
+# Trained model artifacts are versioned on disk, not in git (see ml/README.md),
+# except the two bundles the API image deploys: a host that builds from git
+# (e.g. Render) needs them, and the API verifies their SHA-256 on load.
+ml/artifacts/*
+!ml/artifacts/activity_bilateral/
+!ml/artifacts/activity_single_side/
+ml/reports/*.npz
+
+# Firmware credentials
+firmware/**/config.h
+
+# Public datasets (~880 MB). Never committed, never deployed.
+ml datadets/
+# Local object storage (development) and stray exports
+backend/var/
+var/
+*.npz
+# Python build/test caches
+.ruff_cache/
+
+# Vercel CLI link and local build output
+.vercel

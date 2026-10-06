@@ -10,7 +10,7 @@ import enum
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, String, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -28,10 +28,16 @@ class DeviceStatus(str, enum.Enum):
 
 
 class DeviceKind(str, enum.Enum):
-    """Distinguishes a real node from the simulator. Never guessed."""
+    """Where a device's data comes from. Never guessed.
 
-    HARDWARE = "HARDWARE"
-    SIMULATOR = "SIMULATOR"
+    HARDWARE is only ever assigned to a device registered by an administrator
+    or technician that authenticated with its own key. A device that merely
+    omits `simulated: true` proves nothing: test scripts do that too.
+    """
+
+    HARDWARE = "HARDWARE"        # registered, authenticated physical device
+    SIMULATOR = "SIMULATOR"      # declared simulated: true
+    UNVERIFIED = "UNVERIFIED"    # not simulated, but not authenticated either
 
 
 class Device(Base, TimestampMixin):
@@ -51,6 +57,19 @@ class Device(Base, TimestampMixin):
     last_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     sample_rate_hz: Mapped[float | None] = mapped_column(Float)
     battery_level: Mapped[float | None] = mapped_column(Float)
+
+    # Provenance. SHA-256 of the per-device key issued at registration (the
+    # key itself is shown once and never stored).
+    key_hash: Mapped[str | None] = mapped_column(String(64))
+    verified_hardware: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False)
+    registered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    registered_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    hardware_notes: Mapped[str | None] = mapped_column(String(500))
+    # A revoked device is refused permanently (until re-registered).
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Optional key expiry; an expired key is refused.
+    key_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     sensors: Mapped[list["Sensor"]] = relationship(
         back_populates="device", cascade="all, delete-orphan"

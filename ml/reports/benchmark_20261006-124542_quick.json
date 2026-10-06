@@ -1,0 +1,1121 @@
+{
+  "started": "2026-10-06T06:36:28.072465+00:00",
+  "quick": true,
+  "host": {
+    "platform": "macOS-15.7.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.2"
+  },
+  "protocol": "GroupKFold(4) by subject; pooled test predictions",
+  "experiments": {
+    "B1/bilateral/rf_invariant/w2.0": {
+      "accuracy": 0.8594,
+      "macro_f1": 0.8287,
+      "per_class_f1": {
+        "cycling": 0.9978,
+        "lying": 0.6643,
+        "other_exercise": 0.9026,
+        "running": 0.9981,
+        "sitting": 0.3099,
+        "stairs_down": 0.892,
+        "stairs_up": 0.8803,
+        "standing": 0.9364,
+        "walking": 0.8771
+      },
+      "confusion_matrix": [
+        [
+          6690,
+          0,
+          28,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          4307,
+          26,
+          0,
+          2074,
+          0,
+          0,
+          313,
+          0
+        ],
+        [
+          0,
+          6,
+          16476,
+          10,
+          0,
+          56,
+          33,
+          48,
+          171
+        ],
+        [
+          0,
+          0,
+          1,
+          3359,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          1931,
+          0,
+          0,
+          1008,
+          0,
+          0,
+          421,
+          0
+        ],
+        [
+          0,
+          0,
+          549,
+          0,
+          0,
+          2803,
+          8,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          630,
+          0,
+          0,
+          3,
+          2711,
+          0,
+          16
+        ],
+        [
+          0,
+          4,
+          48,
+          0,
+          63,
+          0,
+          0,
+          6605,
+          0
+        ],
+        [
+          0,
+          0,
+          1950,
+          0,
+          0,
+          63,
+          47,
+          0,
+          8020
+        ]
+      ],
+      "classes": [
+        "cycling",
+        "lying",
+        "other_exercise",
+        "running",
+        "sitting",
+        "stairs_down",
+        "stairs_up",
+        "standing",
+        "walking"
+      ],
+      "fold_macro_f1": [
+        0.8289,
+        0.8704,
+        0.8421,
+        0.7551
+      ],
+      "robustness_macro_f1": {
+        "rotation": 0.8287,
+        "noise_x3": 0.6989,
+        "gyro_bias": 0.8041,
+        "accel_gain": 0.7893,
+        "rate_5pct": 0.8144
+      },
+      "train_seconds_total": 57.2,
+      "latency_ms_p50": 4.627,
+      "latency_ms_p95": 5.015,
+      "model_bytes": 12495641,
+      "inference_peak_python_mem_bytes": 31708,
+      "window_s": 2.0,
+      "stride_s": 0.5,
+      "n_windows": 60480,
+      "response_delay_s": 1.5
+    },
+    "B2/bilateral/rf_raw_axis/w2.0": {
+      "accuracy": 0.9411,
+      "macro_f1": 0.9413,
+      "per_class_f1": {
+        "cycling": 0.9993,
+        "lying": 0.9988,
+        "other_exercise": 0.9155,
+        "running": 0.9976,
+        "sitting": 0.9999,
+        "stairs_down": 0.8847,
+        "stairs_up": 0.7851,
+        "standing": 0.9909,
+        "walking": 0.8999
+      },
+      "confusion_matrix": [
+        [
+          6711,
+          0,
+          9,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          6706,
+          14,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          2,
+          16617,
+          14,
+          0,
+          42,
+          44,
+          36,
+          45
+        ],
+        [
+          0,
+          0,
+          2,
+          3358,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          0,
+          3359,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          520,
+          0,
+          0,
+          2751,
+          12,
+          0,
+          77
+        ],
+        [
+          0,
+          0,
+          906,
+          0,
+          0,
+          3,
+          2379,
+          0,
+          72
+        ],
+        [
+          0,
+          0,
+          86,
+          0,
+          0,
+          0,
+          0,
+          6634,
+          0
+        ],
+        [
+          0,
+          0,
+          1347,
+          0,
+          0,
+          63,
+          265,
+          0,
+          8405
+        ]
+      ],
+      "classes": [
+        "cycling",
+        "lying",
+        "other_exercise",
+        "running",
+        "sitting",
+        "stairs_down",
+        "stairs_up",
+        "standing",
+        "walking"
+      ],
+      "fold_macro_f1": [
+        0.9191,
+        0.9547,
+        0.9259,
+        0.9554
+      ],
+      "robustness_macro_f1": {
+        "rotation": 0.2026,
+        "noise_x3": 0.9385,
+        "gyro_bias": 0.9403,
+        "accel_gain": 0.938,
+        "rate_5pct": 0.9192
+      },
+      "train_seconds_total": 52.7,
+      "latency_ms_p50": 4.371,
+      "latency_ms_p95": 4.524,
+      "model_bytes": 8016703,
+      "inference_peak_python_mem_bytes": 29252
+    },
+    "B2/bilateral/cnn/w2.0": {
+      "accuracy": 0.8237,
+      "macro_f1": 0.7853,
+      "per_class_f1": {
+        "cycling": 0.982,
+        "lying": 0.5399,
+        "other_exercise": 0.9312,
+        "running": 0.9942,
+        "sitting": 0.1878,
+        "stairs_down": 0.9085,
+        "stairs_up": 0.9339,
+        "standing": 0.6941,
+        "walking": 0.8964
+      },
+      "confusion_matrix": [
+        [
+          6701,
+          0,
+          10,
+          6,
+          0,
+          1,
+          2,
+          0,
+          0
+        ],
+        [
+          0,
+          2908,
+          29,
+          0,
+          2009,
+          0,
+          1,
+          1773,
+          0
+        ],
+        [
+          5,
+          5,
+          16437,
+          33,
+          0,
+          97,
+          44,
+          76,
+          103
+        ],
+        [
+          0,
+          0,
+          0,
+          3360,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          1086,
+          0,
+          0,
+          687,
+          0,
+          0,
+          1587,
+          0
+        ],
+        [
+          101,
+          4,
+          298,
+          0,
+          0,
+          2899,
+          52,
+          0,
+          6
+        ],
+        [
+          120,
+          3,
+          66,
+          0,
+          0,
+          1,
+          3088,
+          0,
+          82
+        ],
+        [
+          0,
+          46,
+          13,
+          0,
+          1262,
+          1,
+          0,
+          5398,
+          0
+        ],
+        [
+          0,
+          0,
+          1649,
+          0,
+          0,
+          23,
+          66,
+          0,
+          8342
+        ]
+      ],
+      "classes": [
+        "cycling",
+        "lying",
+        "other_exercise",
+        "running",
+        "sitting",
+        "stairs_down",
+        "stairs_up",
+        "standing",
+        "walking"
+      ],
+      "fold_macro_f1": [
+        0.783,
+        0.8179,
+        0.7772,
+        0.7388
+      ],
+      "robustness_macro_f1": {
+        "rotation": 0.7853,
+        "noise_x3": 0.6938,
+        "gyro_bias": 0.7692,
+        "accel_gain": 0.7345,
+        "rate_5pct": 0.7814
+      },
+      "train_seconds_total": 301.6,
+      "latency_ms_p50": 0.226,
+      "latency_ms_p95": 0.245,
+      "model_bytes": 241432,
+      "parameters": 58025
+    },
+    "B2/bilateral/cnn_lstm/w2.0": {
+      "accuracy": 0.7931,
+      "macro_f1": 0.7544,
+      "per_class_f1": {
+        "cycling": 0.9935,
+        "lying": 0.4517,
+        "other_exercise": 0.9424,
+        "running": 0.9945,
+        "sitting": 0.2305,
+        "stairs_down": 0.9044,
+        "stairs_up": 0.9159,
+        "standing": 0.4366,
+        "walking": 0.9196
+      },
+      "confusion_matrix": [
+        [
+          6700,
+          0,
+          12,
+          1,
+          0,
+          0,
+          7,
+          0,
+          0
+        ],
+        [
+          0,
+          3360,
+          27,
+          0,
+          1868,
+          3,
+          0,
+          1462,
+          0
+        ],
+        [
+          23,
+          8,
+          16429,
+          17,
+          0,
+          81,
+          41,
+          62,
+          139
+        ],
+        [
+          0,
+          0,
+          19,
+          3341,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          1664,
+          0,
+          0,
+          817,
+          0,
+          0,
+          879,
+          0
+        ],
+        [
+          0,
+          4,
+          407,
+          0,
+          0,
+          2876,
+          70,
+          0,
+          3
+        ],
+        [
+          44,
+          0,
+          104,
+          0,
+          0,
+          18,
+          3180,
+          0,
+          14
+        ],
+        [
+          0,
+          3120,
+          7,
+          0,
+          1044,
+          1,
+          0,
+          2548,
+          0
+        ],
+        [
+          0,
+          0,
+          1060,
+          0,
+          0,
+          21,
+          286,
+          0,
+          8713
+        ]
+      ],
+      "classes": [
+        "cycling",
+        "lying",
+        "other_exercise",
+        "running",
+        "sitting",
+        "stairs_down",
+        "stairs_up",
+        "standing",
+        "walking"
+      ],
+      "fold_macro_f1": [
+        0.6942,
+        0.7459,
+        0.687,
+        0.7251
+      ],
+      "robustness_macro_f1": {
+        "rotation": 0.7544,
+        "noise_x3": 0.6987,
+        "gyro_bias": 0.7321,
+        "accel_gain": 0.7387,
+        "rate_5pct": 0.7466
+      },
+      "train_seconds_total": 345.9,
+      "latency_ms_p50": 0.771,
+      "latency_ms_p95": 0.862,
+      "model_bytes": 375756,
+      "parameters": 91305
+    },
+    "B2/bilateral/cnn_pretrained_pamap2/w2.0": {
+      "accuracy": 0.8803,
+      "macro_f1": 0.8352,
+      "per_class_f1": {
+        "cycling": 0.9703,
+        "lying": 0.6947,
+        "other_exercise": 0.9481,
+        "running": 0.9862,
+        "sitting": 0.2645,
+        "stairs_down": 0.9034,
+        "stairs_up": 0.9429,
+        "standing": 0.8588,
+        "walking": 0.9476
+      },
+      "confusion_matrix": [
+        [
+          6559,
+          0,
+          151,
+          6,
+          0,
+          1,
+          3,
+          0,
+          0
+        ],
+        [
+          0,
+          4387,
+          30,
+          0,
+          1473,
+          0,
+          0,
+          830,
+          0
+        ],
+        [
+          1,
+          63,
+          16146,
+          79,
+          0,
+          226,
+          51,
+          79,
+          155
+        ],
+        [
+          0,
+          0,
+          9,
+          3351,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          1440,
+          0,
+          0,
+          743,
+          0,
+          0,
+          1177,
+          0
+        ],
+        [
+          120,
+          3,
+          181,
+          0,
+          0,
+          3021,
+          32,
+          0,
+          3
+        ],
+        [
+          120,
+          0,
+          42,
+          0,
+          0,
+          10,
+          3164,
+          0,
+          24
+        ],
+        [
+          0,
+          17,
+          31,
+          0,
+          42,
+          3,
+          0,
+          6627,
+          0
+        ],
+        [
+          0,
+          0,
+          671,
+          0,
+          0,
+          67,
+          101,
+          0,
+          9241
+        ]
+      ],
+      "classes": [
+        "cycling",
+        "lying",
+        "other_exercise",
+        "running",
+        "sitting",
+        "stairs_down",
+        "stairs_up",
+        "standing",
+        "walking"
+      ],
+      "fold_macro_f1": [
+        0.8863,
+        0.8204,
+        0.8324,
+        0.7925
+      ],
+      "robustness_macro_f1": {
+        "rotation": 0.8352,
+        "noise_x3": 0.7366,
+        "gyro_bias": 0.7829,
+        "accel_gain": 0.731,
+        "rate_5pct": 0.8341
+      },
+      "train_seconds_total": 337.4,
+      "latency_ms_p50": 0.249,
+      "latency_ms_p95": 0.279,
+      "model_bytes": 241432,
+      "parameters": 58025
+    },
+    "S1/single/rf_invariant/w2.0": {
+      "accuracy": 0.8544,
+      "macro_f1": 0.8241,
+      "per_class_f1": {
+        "cycling": 0.9821,
+        "lying": 0.6862,
+        "other_exercise": 0.9152,
+        "running": 0.9833,
+        "sitting": 0.3354,
+        "stairs_down": 0.8885,
+        "stairs_up": 0.845,
+        "standing": 0.8349,
+        "walking": 0.946
+      },
+      "confusion_matrix": [
+        [
+          16341,
+          4,
+          268,
+          0,
+          63,
+          17,
+          62,
+          88,
+          0
+        ],
+        [
+          26,
+          11956,
+          160,
+          0,
+          3950,
+          3,
+          12,
+          1317,
+          0
+        ],
+        [
+          11,
+          14,
+          33197,
+          65,
+          119,
+          208,
+          251,
+          198,
+          542
+        ],
+        [
+          0,
+          2,
+          73,
+          8521,
+          26,
+          16,
+          21,
+          73,
+          12
+        ],
+        [
+          28,
+          4887,
+          138,
+          0,
+          3189,
+          4,
+          7,
+          2285,
+          0
+        ],
+        [
+          0,
+          6,
+          1002,
+          1,
+          48,
+          7482,
+          118,
+          164,
+          23
+        ],
+        [
+          23,
+          9,
+          1376,
+          0,
+          40,
+          92,
+          7277,
+          149,
+          138
+        ],
+        [
+          0,
+          540,
+          157,
+          1,
+          1006,
+          3,
+          17,
+          15634,
+          1
+        ],
+        [
+          5,
+          6,
+          1568,
+          0,
+          39,
+          173,
+          354,
+          186,
+          26668
+        ]
+      ],
+      "classes": [
+        "cycling",
+        "lying",
+        "other_exercise",
+        "running",
+        "sitting",
+        "stairs_down",
+        "stairs_up",
+        "standing",
+        "walking"
+      ],
+      "fold_macro_f1": [
+        0.8221,
+        0.8312,
+        0.8242,
+        0.814
+      ],
+      "robustness_macro_f1": {
+        "rotation": 0.8241,
+        "noise_x3": 0.7031,
+        "gyro_bias": 0.8046,
+        "accel_gain": 0.7816,
+        "rate_5pct": 0.8068
+      },
+      "train_seconds_total": 178.9,
+      "latency_ms_p50": 5.86,
+      "latency_ms_p95": 6.079,
+      "model_bytes": 61065565,
+      "inference_peak_python_mem_bytes": 29972
+    },
+    "S1/single/cnn/w2.0": {
+      "accuracy": 0.7989,
+      "macro_f1": 0.7622,
+      "per_class_f1": {
+        "cycling": 0.9658,
+        "lying": 0.4471,
+        "other_exercise": 0.9343,
+        "running": 0.9709,
+        "sitting": 0.2414,
+        "stairs_down": 0.876,
+        "stairs_up": 0.8798,
+        "standing": 0.6018,
+        "walking": 0.9425
+      },
+      "confusion_matrix": [
+        [
+          16350,
+          41,
+          125,
+          2,
+          111,
+          17,
+          51,
+          146,
+          0
+        ],
+        [
+          44,
+          6943,
+          83,
+          0,
+          3146,
+          1,
+          34,
+          7173,
+          0
+        ],
+        [
+          144,
+          94,
+          32602,
+          189,
+          156,
+          383,
+          289,
+          442,
+          306
+        ],
+        [
+          0,
+          10,
+          42,
+          8565,
+          21,
+          5,
+          13,
+          79,
+          9
+        ],
+        [
+          11,
+          3271,
+          62,
+          0,
+          2031,
+          15,
+          36,
+          5112,
+          0
+        ],
+        [
+          236,
+          24,
+          545,
+          126,
+          45,
+          7432,
+          167,
+          175,
+          94
+        ],
+        [
+          224,
+          30,
+          183,
+          1,
+          23,
+          66,
+          8175,
+          161,
+          241
+        ],
+        [
+          7,
+          3188,
+          131,
+          0,
+          728,
+          14,
+          16,
+          13274,
+          1
+        ],
+        [
+          0,
+          32,
+          1414,
+          17,
+          27,
+          191,
+          698,
+          195,
+          26425
+        ]
+      ],
+      "classes": [
+        "cycling",
+        "lying",
+        "other_exercise",
+        "running",
+        "sitting",
+        "stairs_down",
+        "stairs_up",
+        "standing",
+        "walking"
+      ],
+      "fold_macro_f1": [
+        0.8167,
+        0.7186,
+        0.7561,
+        0.6913
+      ],
+      "robustness_macro_f1": {
+        "rotation": 0.7622,
+        "noise_x3": 0.6821,
+        "gyro_bias": 0.7573,
+        "accel_gain": 0.7346,
+        "rate_5pct": 0.7593
+      },
+      "train_seconds_total": 385.7,
+      "latency_ms_p50": 0.132,
+      "latency_ms_p95": 0.148,
+      "model_bytes": 143128,
+      "parameters": 33449
+    },
+    "X1/transfer/daily_sports_legs->pamap2_ankle": {
+      "macro_f1": 0.2173,
+      "accuracy": 0.228,
+      "classes": [
+        "cycling",
+        "lying",
+        "other_exercise",
+        "running",
+        "sitting",
+        "stairs_down",
+        "stairs_up",
+        "standing",
+        "walking"
+      ]
+    },
+    "X1/transfer/pamap2_ankle->daily_sports_legs": {
+      "macro_f1": 0.1406,
+      "accuracy": 0.2469,
+      "classes": [
+        "cycling",
+        "lying",
+        "other_exercise",
+        "running",
+        "sitting",
+        "stairs_down",
+        "stairs_up",
+        "standing",
+        "walking"
+      ]
+    }
+  },
+  "datasets": {
+    "daily_sports": {
+      "name": "Daily and Sports Activities (UCI)",
+      "sensor": "Xsens MTx (acc m/s^2 -> g, gyro rad/s -> deg/s)",
+      "placements": [
+        "LEG"
+      ],
+      "rate_hz": 25.0,
+      "archive": "daily+and+sports+activities.zip",
+      "archive_sha256": "f42ad7744ecf14151c9fa3a86dfb5b24de9d7cb7ffe956ef5de242983459c77e",
+      "subjects": 8,
+      "bilateral": true,
+      "force": false,
+      "excluded_activities": {
+        "a08": "moving around in an elevator"
+      }
+    },
+    "pamap2": {
+      "name": "PAMAP2 Physical Activity Monitoring (UCI), ankle IMU",
+      "sensor": "Colibri IMU, ankle (acc16 m/s^2 -> g, gyro rad/s -> deg/s)",
+      "placements": [
+        "ANKLE"
+      ],
+      "rate_hz_original": 100.0,
+      "rate_hz": 25.0,
+      "archive": "pamap2+physical+activity+monitoring.zip",
+      "archive_sha256_first64mb": "096e7c8dbfff2452c528fbcb2cd085fa1267ab20ac229592ec3cfa58bc3d4bcd",
+      "subjects": 9,
+      "bilateral": false,
+      "force": false,
+      "excluded_activities": {
+        "0": "transient",
+        "9": "watching TV",
+        "10": "computer work",
+        "11": "car driving",
+        "16": "vacuum cleaning",
+        "17": "ironing",
+        "18": "folding laundry",
+        "19": "house cleaning"
+      }
+    }
+  },
+  "finished": "2026-10-06T07:15:42.179074+00:00",
+  "log": [
+    "[12:06:28] loaded Daily&Sports 8640 segments, PAMAP2 94 recordings",
+    "[12:06:28] B1/bilateral/rf_invariant/w2.0: 60480 windows",
+    "[12:08:02]   acc 0.859 macroF1 0.829 folds [0.8289, 0.8704, 0.8421, 0.7551] | p50 4.627 ms | 12.50 MB | robust: rotation 0.829, noise_x3 0.699, gyro_bias 0.804, accel_gain 0.789, rate_5pct 0.814",
+    "[12:08:02] B2/bilateral/rf_raw_axis/w2.0",
+    "[12:09:20]   acc 0.941 macroF1 0.941 folds [0.9191, 0.9547, 0.9259, 0.9554] | p50 4.371 ms | 8.02 MB | robust: rotation 0.203, noise_x3 0.939, gyro_bias 0.940, accel_gain 0.938, rate_5pct 0.919",
+    "[12:09:20] B2/bilateral/cnn/w2.0",
+    "[12:16:14]   acc 0.824 macroF1 0.785 folds [0.783, 0.8179, 0.7772, 0.7388] | p50 0.226 ms | 0.24 MB | robust: rotation 0.785, noise_x3 0.694, gyro_bias 0.769, accel_gain 0.735, rate_5pct 0.781 | params 58025",
+    "[12:16:14] B2/bilateral/cnn_lstm/w2.0",
+    "[12:24:04]   acc 0.793 macroF1 0.754 folds [0.6942, 0.7459, 0.687, 0.7251] | p50 0.771 ms | 0.38 MB | robust: rotation 0.754, noise_x3 0.699, gyro_bias 0.732, accel_gain 0.739, rate_5pct 0.747 | params 91305",
+    "[12:24:04] pretraining CNN encoder on PAMAP2 (31500 windows)",
+    "[12:32:04]   B2/bilateral/cnn_pretrained_pamap2/w2.0: acc 0.880 macroF1 0.835 folds [0.8863, 0.8204, 0.8324, 0.7925] | p50 0.249 ms | 0.24 MB | robust: rotation 0.835, noise_x3 0.737, gyro_bias 0.783, accel_gain 0.731, rate_5pct 0.834",
+    "[12:32:05] S1/single/rf_invariant/w2.0: 152460 windows",
+    "[12:35:49]   acc 0.854 macroF1 0.824 folds [0.8221, 0.8312, 0.8242, 0.814] | p50 5.86 ms | 61.07 MB | robust: rotation 0.824, noise_x3 0.703, gyro_bias 0.805, accel_gain 0.782, rate_5pct 0.807",
+    "[12:44:36]   S1/single/cnn/w2.0: acc 0.799 macroF1 0.762 folds [0.8167, 0.7186, 0.7561, 0.6913] | p50 0.132 ms | 0.14 MB | robust: rotation 0.762, noise_x3 0.682, gyro_bias 0.757, accel_gain 0.735, rate_5pct 0.759",
+    "[12:45:27] X1/transfer/daily_sports_legs->pamap2_ankle: acc 0.228 macroF1 0.217 on [np.str_('cycling'), np.str_('lying'), np.str_('other_exercise'), np.str_('running'), np.str_('sitting'), np.str_('stairs_down'), np.str_('stairs_up'), np.str_('standing'), np.str_('walking')]",
+    "[12:45:42] X1/transfer/pamap2_ankle->daily_sports_legs: acc 0.247 macroF1 0.141 on [np.str_('cycling'), np.str_('lying'), np.str_('other_exercise'), np.str_('running'), np.str_('sitting'), np.str_('stairs_down'), np.str_('stairs_up'), np.str_('standing'), np.str_('walking')]"
+  ]
+}

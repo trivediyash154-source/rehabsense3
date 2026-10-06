@@ -1,0 +1,55 @@
+{
+  "name": "activity_single_side",
+  "version": "v1",
+  "task": "activity_recognition",
+  "model_type": "RandomForestClassifier",
+  "model_file": "model.joblib",
+  "model_sha256": "ce7b3e23d78fcb9ec0b06cf8f4590d296685e5f2b98887b28d896706c58a4120",
+  "feature_version": "inv-feat-v2",
+  "preprocessing_version": "prep-v2",
+  "sklearn_version": "1.9.1",
+  "input": {
+    "kind": "single_side",
+    "rate_hz": 25.0,
+    "window_s": 2.0,
+    "channels": "orientation-invariant (features.INVARIANT_CHANNELS)",
+    "force_inputs": 0
+  },
+  "classes": [
+    "cycling",
+    "lying",
+    "other_exercise",
+    "running",
+    "sitting",
+    "stairs_down",
+    "stairs_up",
+    "standing",
+    "walking"
+  ],
+  "confidence_threshold": 0.3,
+  "deployable": true,
+  "dataset": {
+    "name": "Daily & Sports (each leg) + PAMAP2 (ankle)",
+    "sensor": "Xsens MTx and Colibri IMUs",
+    "placements": [
+      "LEG",
+      "ANKLE"
+    ]
+  },
+  "metrics_summary": {
+    "accuracy": 0.9054,
+    "macro_f1": 0.8952
+  },
+  "validation_status": {
+    "public_dataset": "EVALUATED (subject-independent; see metrics.json)",
+    "rehabsense_hardware": "NOT_VALIDATED",
+    "clinical": "NOT_VALIDATED"
+  },
+  "trained_at": "2026-10-06T09:30:02.935398+00:00",
+  "git_commit": "38ccdb964d2d562e99fde9c1b895b6fbea47036c",
+  "git_dirty": true,
+  "host": {
+    "platform": "macOS-15.7.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.2"
+  }
+}

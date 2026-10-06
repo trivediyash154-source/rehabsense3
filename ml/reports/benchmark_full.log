@@ -1,0 +1,35 @@
+[12:49:34] loaded Daily&Sports 8632 segments, PAMAP2 93 recordings
+[12:49:35] B1/bilateral/rf_invariant/w1.0: 77688 windows
+[12:51:47]   acc 0.914 macroF1 0.912 folds [0.8874, 0.9326, 0.9556, 0.8169] | p50 4.622 ms | 18.54 MB | robust: rotation 0.912, noise_x3 0.883, gyro_bias 0.911, accel_gain 0.893, rate_5pct 0.900
+[12:51:47] B1/bilateral/hgb_invariant/w1.0: 77688 windows
+[12:57:41]   acc 0.911 macroF1 0.908 folds [0.874, 0.9586, 0.937, 0.8138] | p50 54.975 ms | 2.46 MB | robust: rotation 0.908, noise_x3 0.861, gyro_bias 0.907, accel_gain 0.887, rate_5pct 0.898
+[12:57:41] B1/bilateral/rf_invariant_aug/w1.0: 77688 windows
+[13:03:24]   acc 0.914 macroF1 0.911 folds [0.8912, 0.9321, 0.9564, 0.8126] | p50 4.729 ms | 29.89 MB | robust: rotation 0.911, noise_x3 0.909, gyro_bias 0.911, accel_gain 0.902, rate_5pct 0.895
+[13:03:24] B1/bilateral/rf_invariant/w2.0: 60424 windows
+[13:05:24]   acc 0.918 macroF1 0.921 folds [0.8904, 0.9327, 0.9738, 0.8311] | p50 7.733 ms | 9.60 MB | robust: rotation 0.921, noise_x3 0.915, gyro_bias 0.921, accel_gain 0.901, rate_5pct 0.903
+[13:05:24] B1/bilateral/hgb_invariant/w2.0: 60424 windows
+[13:11:22]   acc 0.941 macroF1 0.935 folds [0.9483, 0.9754, 0.951, 0.8214] | p50 43.75 ms | 2.22 MB | robust: rotation 0.935, noise_x3 0.857, gyro_bias 0.930, accel_gain 0.920, rate_5pct 0.918
+[13:11:22] B1/bilateral/rf_invariant_aug/w2.0: 60424 windows
+[13:16:20]   acc 0.918 macroF1 0.921 folds [0.8972, 0.9306, 0.9737, 0.8294] | p50 5.681 ms | 15.40 MB | robust: rotation 0.921, noise_x3 0.919, gyro_bias 0.921, accel_gain 0.914, rate_5pct 0.899
+[13:16:20] B1/bilateral/rf_invariant/w3.0: 43160 windows
+[13:18:02]   acc 0.929 macroF1 0.929 folds [0.9269, 0.93, 0.9789, 0.8289] | p50 5.127 ms | 5.52 MB | robust: rotation 0.929, noise_x3 0.919, gyro_bias 0.929, accel_gain 0.903, rate_5pct 0.896
+[13:18:02] B1/bilateral/hgb_invariant/w3.0: 43160 windows
+[13:23:17]   acc 0.954 macroF1 0.945 folds [0.9772, 0.9827, 0.9452, 0.8334] | p50 94.838 ms | 2.00 MB | robust: rotation 0.945, noise_x3 0.852, gyro_bias 0.941, accel_gain 0.940, rate_5pct 0.929
+[13:23:17] B1/bilateral/rf_invariant_aug/w3.0: 43160 windows
+[13:26:30]   acc 0.927 macroF1 0.927 folds [0.9202, 0.927, 0.9797, 0.8265] | p50 5.229 ms | 8.92 MB | robust: rotation 0.927, noise_x3 0.926, gyro_bias 0.928, accel_gain 0.921, rate_5pct 0.896
+[13:26:30] B2/bilateral/rf_raw_axis/w2.0
+[13:28:18]   acc 0.943 macroF1 0.943 folds [0.9202, 0.9571, 0.9277, 0.9551] | p50 5.04 ms | 7.99 MB | robust: rotation 0.199, noise_x3 0.939, gyro_bias 0.942, accel_gain 0.940, rate_5pct 0.921
+[13:28:18] B2/bilateral/cnn/w2.0
+[13:48:04]   acc 0.883 macroF1 0.871 folds [0.8541, 0.9038, 0.8029, 0.8908] | p50 0.343 ms | 0.24 MB | robust: rotation 0.871, noise_x3 0.868, gyro_bias 0.874, accel_gain 0.868, rate_5pct 0.859 | params 58505
+[13:48:04] B2/bilateral/cnn_lstm/w2.0
+[14:11:03]   acc 0.908 macroF1 0.896 folds [0.8778, 0.9253, 0.8579, 0.9069] | p50 0.825 ms | 0.38 MB | robust: rotation 0.896, noise_x3 0.893, gyro_bias 0.894, accel_gain 0.886, rate_5pct 0.887 | params 91785
+[14:11:03] pretraining CNN encoder on PAMAP2 (31203 windows)
+[14:24:02]   B2/bilateral/cnn_pretrained_pamap2/w2.0: acc 0.913 macroF1 0.898 folds [0.9127, 0.8723, 0.9016, 0.8526] | p50 0.261 ms | 0.24 MB | robust: rotation 0.898, noise_x3 0.900, gyro_bias 0.899, accel_gain 0.896, rate_5pct 0.895
+[14:24:02] S1/single/rf_invariant/w2.0: 152051 windows
+[14:27:44]   acc 0.905 macroF1 0.895 folds [0.874, 0.8982, 0.9141, 0.8888] | p50 4.957 ms | 45.46 MB | robust: rotation 0.895, noise_x3 0.859, gyro_bias 0.894, accel_gain 0.859, rate_5pct 0.883
+[14:27:44] S1/single/rf_invariant_aug/w2.0: 152051 windows
+[14:35:54]   acc 0.905 macroF1 0.895 folds [0.8739, 0.8971, 0.9125, 0.8907] | p50 6.783 ms | 89.05 MB | robust: rotation 0.895, noise_x3 0.881, gyro_bias 0.893, accel_gain 0.862, rate_5pct 0.884
+[14:53:17]   S1/single/cnn/w2.0: acc 0.896 macroF1 0.881 folds [0.8863, 0.8876, 0.8843, 0.8583] | p50 0.118 ms | 0.15 MB | robust: rotation 0.881, noise_x3 0.886, gyro_bias 0.883, accel_gain 0.860, rate_5pct 0.877
+[14:54:02] X1/transfer/daily_sports_legs->pamap2_ankle: acc 0.270 macroF1 0.241 on [np.str_('cycling'), np.str_('lying'), np.str_('other_exercise'), np.str_('running'), np.str_('sitting'), np.str_('stairs_down'), np.str_('stairs_up'), np.str_('standing'), np.str_('walking')]
+[14:54:15] X1/transfer/pamap2_ankle->daily_sports_legs: acc 0.251 macroF1 0.153 on [np.str_('cycling'), np.str_('lying'), np.str_('other_exercise'), np.str_('running'), np.str_('sitting'), np.str_('stairs_down'), np.str_('stairs_up'), np.str_('standing'), np.str_('walking')]
+[14:54:15] wrote /Users/yashtrivedi/Documents/edi/ml/reports/benchmark_20261006-145415.json

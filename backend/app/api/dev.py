@@ -36,7 +36,7 @@ from app.db.models.session import (
     SessionStatus,
 )
 from app.schemas.dev import SeedRequest
-from app.services import report_service, session_service
+from app.services import report_service, session_service, sim_runner
 from app.services.live_registry import registry
 
 router = APIRouter(prefix="/dev", tags=["dev"])
@@ -223,7 +223,7 @@ async def generate_demo_data(payload: SeedRequest, request: Request, user: Curre
     was attached.
     """
     _require_dev()
-    host = f"{request.url.hostname}:{request.url.port or 8000}"
+    host = sim_runner.loopback_host(request)
     started = time.perf_counter()
 
     plan = [

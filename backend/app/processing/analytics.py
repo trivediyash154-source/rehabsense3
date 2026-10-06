@@ -173,7 +173,12 @@ class SessionProcessor:
 
     @property
     def session_mode(self) -> str:
-        """LIVE, SIMULATED or UNKNOWN — declared, never guessed."""
+        """SIMULATED, UNVERIFIED or UNKNOWN — declared, never guessed.
+
+        v1 nodes cannot authenticate, so a non-simulated v1 stream is
+        UNVERIFIED rather than LIVE: omitting the simulated flag is not
+        evidence of physical hardware.
+        """
         connected = [
             pipe.connection
             for pipe in self.legs.values()
@@ -185,7 +190,7 @@ class SessionProcessor:
             return "SIMULATED"
         if any(c.simulated for c in connected):
             return "MIXED"
-        return "LIVE"
+        return "UNVERIFIED"
 
     # ------------------------------------------------------------------ #
     # sample ingestion

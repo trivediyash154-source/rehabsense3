@@ -22,6 +22,7 @@ import {
   type Milestone,
   type Session,
 } from "@/lib/demo-data";
+import { storePreference } from "@/lib/consent";
 
 /**
  * The one place that decides what the workspace is looking at.
@@ -205,7 +206,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const selectPatient = useCallback((id: number) => {
     setSelectedId(id);
     try {
-      localStorage.setItem(SELECTED_KEY, String(id));
+      storePreference(SELECTED_KEY, String(id));
     } catch {
       /* selection simply will not persist */
     }
@@ -214,7 +215,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const enterIllustrative = useCallback(() => {
     setDemo(true);
     try {
-      localStorage.setItem(DEMO_KEY, "1");
+      storePreference(DEMO_KEY, "1");
     } catch {
       /* not persisted */
     }

@@ -24,9 +24,14 @@ def test_health_keeps_documented_shape(client):
     assert client.get("/api/health").json() == {"status": "ok"}
 
 
-def test_health_subchecks(client):
+def test_health_subchecks(client, clinician):
     assert client.get("/api/health/database").json()["status"] == "ok"
-    assert client.get("/api/health/analytics").json()["analytics_version"] == "mvp-1.0"
+    # Diagnostics that reveal live-session activity require a signed-in user.
+    client.cookies.clear()      # the clinician fixture left a browser session cookie
+    assert client.get("/api/health/analytics").status_code == 401
+    assert client.get("/api/health/websocket").status_code == 401
+    r = client.get("/api/health/analytics", headers=clinician["headers"]).json()
+    assert r["analytics_version"] == "mvp-1.0" and isinstance(r["live_sessions"], int)
 
 
 def test_versioned_alias_available(client):

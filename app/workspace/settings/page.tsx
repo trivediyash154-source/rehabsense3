@@ -9,6 +9,7 @@ import { useSceneStatus } from "@/components/three/SceneContext";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useData } from "@/lib/api/DataProvider";
 import { themeLabels } from "@/lib/theme";
+import { storePreference, type PreferenceKey } from "@/lib/consent";
 
 /**
  * Settings.
@@ -22,7 +23,7 @@ const DENSITY_KEY = "rehabsense-density";
 const DATEFMT_KEY = "rehabsense-datefmt";
 const UNITS_KEY = "rehabsense-units";
 
-function useStored(key: string, fallback: string) {
+function useStored(key: PreferenceKey, fallback: string) {
   const [value, setValue] = useState(fallback);
   useEffect(() => {
     try {
@@ -35,7 +36,7 @@ function useStored(key: string, fallback: string) {
   const update = (next: string) => {
     setValue(next);
     try {
-      localStorage.setItem(key, next);
+      storePreference(key, next);
     } catch {
       /* not persisted */
     }

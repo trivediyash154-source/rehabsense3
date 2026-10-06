@@ -16,6 +16,7 @@ from app.api import (
     auth,
     devices,
     exercises,
+    hardware,
     health,
     notifications,
     patients,
@@ -48,8 +49,18 @@ async def lifespan(app: FastAPI):
     settings.assert_production_safe()
     # Alembic owns the schema; create_all only bootstraps a fresh dev SQLite
     # file so `uvicorn app.main:app` works with zero setup, as documented.
-    if settings.database_url.startswith("sqlite"):
+    if settings.database_url.startswith("sqlite") and not settings.is_production:
         Base.metadata.create_all(bind=engine)
+    if settings.require_migrated_schema:
+        from app.api.health import schema_status
+
+        db = SessionLocal()
+        try:
+            if schema_status(db) != "ok":
+                raise RuntimeError("Database schema is not at the Alembic head. "
+                                   "Run `alembic upgrade head` before starting the API.")
+        finally:
+            db.close()
     db = SessionLocal()
     try:
         created = seed_exercises(db)
@@ -83,6 +94,16 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+
+@app.middleware("http")
+async def limit_request_size(request: Request, call_next):
+    """Reject oversized bodies before they are read (JSON APIs only need ~KB)."""
+    length = request.headers.get("content-length")
+    if length is not None and length.isdigit() and int(length) > settings.max_request_bytes:
+        return JSONResponse(status_code=413, content={"code": "PAYLOAD_TOO_LARGE",
+                                                      "message": "Request body too large."})
+    return await call_next(request)
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -148,6 +169,7 @@ for prefix in (API, f"{API}/v1"):
     app.include_router(focus.router, prefix=prefix)
     app.include_router(dev.router, prefix=prefix)
     app.include_router(notifications.router, prefix=prefix)
+    app.include_router(hardware.router, prefix=prefix)
 
 # WebSockets are unprefixed, exactly as the hardware contract specifies.
 app.include_router(realtime.router)

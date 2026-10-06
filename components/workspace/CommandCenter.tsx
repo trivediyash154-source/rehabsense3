@@ -22,23 +22,48 @@ const attentionMeta = {
  * data, and every reason is a stated observation, never a recommendation.
  */
 export function CommandCenter() {
-  const { authenticated, patient: activePatient, selectPatient } = useData();
-  const { rows } = useRoster(authenticated);
+  const { authenticated, mode, patient: activePatient, selectPatient } = useData();
+  // Same rule as the rest of the workspace: the demo roster appears only in
+  // illustrative mode, which the user enters deliberately. A real account
+  // with no records sees an empty roster, never invented patients.
+  const illustrative = mode === "illustrative";
+  const { rows, loading } = useRoster(authenticated && !illustrative);
+  const isReal = !illustrative;
+  const patients: PatientRow[] = illustrative ? demoRoster : (rows ?? []).map(toPatientRow);
+  const [filter, setFilter] = useState<"all" | "attention">("attention");
 
-  // Real records when the account has any; otherwise the labelled demo roster.
-  const patients = rows && rows.length > 0 ? rows.map(toPatientRow) : demoRoster;
-  const isReal = Boolean(rows && rows.length > 0);
+  if (patients.length === 0) {
+    return (
+      <div className="command">
+        <section className="cmd-queue" role={rows === null && !loading ? "alert" : undefined}>
+          <span className="eyebrow">PATIENT RECORDS</span>
+          <h3>
+            {loading
+              ? "Loading records…"
+              : rows === null
+                ? "Records are unavailable right now."
+                : "No patient records yet."}
+          </h3>
+          <p className="fine-print">
+            {loading
+              ? "Fetching the records assigned to this account."
+              : rows === null
+                ? "The roster could not be loaded from the RehabSense API, so none is shown. Nothing illustrative is substituted."
+                : "A record appears here when you start a session in the Live or Hardware lab, which creates one for you. Illustrative data is available as a separate, clearly labelled mode."}
+          </p>
+        </section>
+      </div>
+    );
+  }
 
   // The selected record is the workspace's record: choosing one here moves
   // every other page onto it, rather than only changing this panel.
   const selectedId = activePatient ? String(activePatient.id) : null;
-  const selected =
-    patients.find((p) => p.id === selectedId) ?? patients[0] ?? demoRoster[0];
+  const selected = patients.find((p) => p.id === selectedId) ?? patients[0];
   const setSelected = (row: PatientRow) => {
     const id = Number(row.id);
     if (Number.isFinite(id)) selectPatient(id);
   };
-  const [filter, setFilter] = useState<"all" | "attention">("attention");
 
   const queue = patients.filter((p) => p.attention !== "steady");
   const shown = filter === "attention" ? queue : patients;

@@ -109,10 +109,14 @@ export function DataState() {
         to fill the space.
       </p>
       <div className="ds-actions">
-        <button type="button" className="button button-small" onClick={() => void generate()} disabled={seeding}>
-          {seeding ? <LoaderCircle className="spin" size={14} /> : <Sparkles size={14} aria-hidden="true" />}
-          {seeding ? "Recording sessions…" : "Generate demo sessions"}
-        </button>
+        {/* The generator is a development endpoint (/api/dev/*, disabled
+            unless the API runs with DEBUG); production builds do not offer it. */}
+        {process.env.NODE_ENV !== "production" && (
+          <button type="button" className="button button-small" onClick={() => void generate()} disabled={seeding}>
+            {seeding ? <LoaderCircle className="spin" size={14} /> : <Sparkles size={14} aria-hidden="true" />}
+            {seeding ? "Recording sessions…" : "Generate demo sessions"}
+          </button>
+        )}
         <Link className="button button-outline button-small" href="/workspace/live">
           Record one yourself
         </Link>
@@ -124,11 +128,13 @@ export function DataState() {
 
       {seedNote && <p className="fine-print ds-detail" aria-live="polite">{seedNote}</p>}
 
-      <span className="fine-print">
-        Generated sessions are streamed through the sensor simulator into the same ingestion
-        socket hardware uses, so they carry real analytics and are labelled as a simulated
-        stream. Nothing is inserted directly.
-      </span>
+      {process.env.NODE_ENV !== "production" && (
+        <span className="fine-print">
+          Generated sessions are streamed through the sensor simulator into the same ingestion
+          socket hardware uses, so they carry real analytics and are labelled as a simulated
+          stream. Nothing is inserted directly.
+        </span>
+      )}
     </section>
   );
 }

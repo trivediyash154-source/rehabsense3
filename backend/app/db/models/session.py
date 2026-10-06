@@ -41,9 +41,15 @@ class SessionStatus(str, enum.Enum):
 class SessionMode(str, enum.Enum):
     """Where the sensor stream came from. Never inferred — always recorded."""
 
-    LIVE = "LIVE"           # a real device completed the handshake
-    SIMULATED = "SIMULATED"  # the simulator completed the handshake
-    UNKNOWN = "UNKNOWN"      # nothing has connected yet
+    LIVE = "LIVE"               # a registered device authenticated with its own key
+    SIMULATED = "SIMULATED"     # the sender declared simulated: true
+    UNVERIFIED = "UNVERIFIED"   # not declared simulated, but not authenticated
+    UNKNOWN = "UNKNOWN"         # nothing has connected yet
+
+
+class RecordingMode(str, enum.Enum):
+    STANDARD = "STANDARD"   # therapy session: analysis is the product
+    RESEARCH = "RESEARCH"   # raw-data collection: raw samples are the product
 
 
 class CalibrationState(str, enum.Enum):
@@ -86,6 +92,20 @@ class Session(Base, TimestampMixin):
 
     # Which formula version produced the numbers above.
     analytics_version: Mapped[str | None] = mapped_column(String(32))
+
+    # 1 = per-leg nodes (thigh+shin IMUs each); 2 = one ESP32 with a LEFT and
+    # a RIGHT MPU6050 plus force channels. Null until a device connects.
+    protocol_version: Mapped[int | None] = mapped_column()
+
+    # SIMULATED / PUBLIC_DATASET_REPLAY / PHYSICAL_UNVERIFIED /
+    # PHYSICAL_REGISTERED (app/sensing/provenance.py). Set at the handshake.
+    provenance: Mapped[str | None] = mapped_column(String(24))
+
+    recording_mode: Mapped[RecordingMode] = mapped_column(
+        Enum(RecordingMode), default=RecordingMode.STANDARD,
+        server_default=RecordingMode.STANDARD.value, nullable=False)
+    # Research recordings: protocol id/version, subject code, conditions.
+    research_protocol: Mapped[dict | None] = mapped_column(JSON)
 
     # Idempotency key so a retried "start session" cannot create a duplicate.
     idempotency_key: Mapped[str | None] = mapped_column(String(80), unique=True, index=True)

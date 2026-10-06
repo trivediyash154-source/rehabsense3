@@ -159,6 +159,45 @@ changes to existing ones, so an older client keeps working.
 
 ---
 
+## Hardware v2 (dual-IMU + force)
+
+```
+/ws/ingest/v2/{session_id}     one ESP32: LEFT + RIGHT MPU6050, N force channels
+```
+
+`app/sensing/` holds the v2 pipeline (pure computation): stream integrity,
+8-check calibration, mounting-independent tilt, windowing, versioned features
+shared with `ml/`, activity inference from verified model bundles, bilateral
+asymmetry, force/motion, repetitions and phases, the Movement Quality Index
+(research prototype) and personal-baseline comparison.
+`services/hw_registry.py` broadcasts `hw_*` events and persists results.
+
+```
+GET  /api/sessions/{id}/analysis | activity | calibration | recording | recording.csv
+GET/POST /api/sessions/{id}/labels           POST /api/sessions/{id}/simulate-hardware
+GET/POST /api/patients/{id}/baseline         GET/PUT /api/patients/{id}/consent
+GET  /api/ml/models  /api/ml/pipeline        POST /api/ml/retention/purge (admin)
+```
+
+New tables (migration `75b9b8c873bd`): `device_calibrations`,
+`sensor_sample_chunks`, `activity_results`, `movement_assessments`,
+`repetition_results`, `model_versions`, `session_labels`,
+`patient_baselines`, `data_use_consents`.
+
+Scripts: `scripts.register_model`, `scripts.purge_raw_samples`,
+`scripts.export_training_dataset`.
+
+Configuration (`.env`): `ML_MODEL_DIR`, `ML_ACTIVITY_MODEL[_VERSION]`,
+`ML_ACTIVITY_MODEL_SINGLE[_VERSION]`, `HW_WINDOW_S`, `HW_STRIDE_S`,
+`HW_CALIBRATION_STILL_S`, `HW_CALIBRATION_MOVEMENT_S`,
+`ALLOW_SIMULATED_DEVICES`, `DEVICE_INGEST_KEY`, `STORE_RAW_SAMPLES`,
+`RAW_SAMPLE_RETENTION_DAYS`.
+
+See [../docs/HARDWARE_ML_ARCHITECTURE.md](../docs/HARDWARE_ML_ARCHITECTURE.md)
+and [../docs/SENSOR_PROTOCOL_V2.md](../docs/SENSOR_PROTOCOL_V2.md).
+
+---
+
 ## Security
 
 - Argon2id password hashing; plaintext is never stored or logged.
@@ -190,9 +229,11 @@ plus `USER`, `PATIENT_ASSIGNMENT`, `DEVICE`, `SENSOR`, `SESSION_DEVICE_LINK`,
 `EXERCISE`, `EXERCISE_PLAN(_ITEM)`, `NOTIFICATION`, `REPORT`, `REPORT_SHARE`
 and `AUDIT_LOG`.
 
-Raw 100 Hz samples are **not** persisted, per the documented policy — only
-chart-ready snapshots (~1/s) and discrete events. The replay endpoint is built
-from those, not from a stored waveform.
+For v1 (per-leg) sessions, raw 100 Hz samples are **not** persisted — only
+chart-ready snapshots (~1/s) and discrete events. For v2 (dual-IMU) sessions,
+raw samples *are* stored as compressed ~1 s chunks with an expiry date, so
+that consented real recordings can become training data; see the retention
+section of docs/HARDWARE_ML_ARCHITECTURE.md.
 
 ### Consistency
 

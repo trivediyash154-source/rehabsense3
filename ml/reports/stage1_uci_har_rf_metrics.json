@@ -1,0 +1,72 @@
+{
+  "accuracy": 0.9257,
+  "macro_f1": 0.9235,
+  "per_class_f1": {
+    "lying": 1.0,
+    "sitting": 0.9005,
+    "stairs_down": 0.8925,
+    "stairs_up": 0.9072,
+    "standing": 0.9094,
+    "walking": 0.9314
+  },
+  "confusion_matrix": [
+    [
+      537,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      439,
+      0,
+      0,
+      52,
+      0
+    ],
+    [
+      0,
+      0,
+      353,
+      44,
+      0,
+      23
+    ],
+    [
+      0,
+      0,
+      7,
+      430,
+      0,
+      34
+    ],
+    [
+      0,
+      45,
+      0,
+      0,
+      487,
+      0
+    ],
+    [
+      0,
+      0,
+      11,
+      3,
+      0,
+      482
+    ]
+  ],
+  "classes": [
+    "lying",
+    "sitting",
+    "stairs_down",
+    "stairs_up",
+    "standing",
+    "walking"
+  ],
+  "train_seconds": 4.5,
+  "split": "official subject-disjoint test set"
+}

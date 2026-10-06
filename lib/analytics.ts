@@ -1,3 +1,5 @@
+import { hasConsent } from "@/lib/consent";
+
 /**
  * Product event logging with a strict allowlist.
  *
@@ -68,6 +70,8 @@ export const codeAllowlist = [
   "VALIDATION_ERROR",
   "EMAIL_ALREADY_REGISTERED",
   "NETWORK_ERROR",
+  "API_UNREACHABLE",
+  "BACKEND_NOT_CONNECTED",
   "ERROR",
   "CONTACT_NOT_CONFIGURED",
   "CONTACT_DELIVERY_FAILED",
@@ -143,6 +147,8 @@ export function track(name: EventName, properties: SafeProperties = {}) {
   // Honour an explicit opt-out even before any collector is configured.
   const legacyDnt = (window as Window & { doNotTrack?: string }).doNotTrack;
   if (navigator.doNotTrack === "1" || legacyDnt === "1") return;
+  // Nothing is sent without analytics consent from the cookie banner.
+  if (!hasConsent("analytics")) return;
 
   const event: AnalyticsEvent = {
     name,

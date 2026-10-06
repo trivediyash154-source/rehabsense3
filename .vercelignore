@@ -1,0 +1,31 @@
+# Only the Next.js frontend deploys to Vercel. Everything below runs elsewhere
+# (Python API server, ML training machine, ESP32) or is data.
+backend/
+ml/
+ml datadets/
+firmware/
+docs/
+scripts/
+*.db
+*.db-shm
+*.db-wal
+*.npz
+*.joblib
+*.zip
+*.xlsx
+.venv/
+var/
+# Not needed to build or serve the frontend
+.pytest_cache/
+**/__pycache__/
+*.tsbuildinfo
+*.log
+docker-compose.yml
+.dockerignore
+# Local env files never leave this machine (the example has placeholders only)
+.env*
+!.env.example
+# Documentation is not part of the frontend build
+*.md
+render.yaml
+fly.toml

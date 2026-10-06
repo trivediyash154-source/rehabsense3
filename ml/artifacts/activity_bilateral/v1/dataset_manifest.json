@@ -1,0 +1,17 @@
+{
+  "name": "Daily and Sports Activities (UCI)",
+  "sensor": "Xsens MTx (acc m/s^2 -> g, gyro rad/s -> deg/s)",
+  "placements": [
+    "LEG"
+  ],
+  "rate_hz": 25.0,
+  "archive": "daily+and+sports+activities.zip",
+  "archive_sha256": "f42ad7744ecf14151c9fa3a86dfb5b24de9d7cb7ffe956ef5de242983459c77e",
+  "subjects": 8,
+  "bilateral": true,
+  "force": false,
+  "excluded_activities": {
+    "a08": "moving around in an elevator"
+  },
+  "calibration_emulation": "per subject, standing segment a02/s01 = neutral pose; removed from training and evaluation"
+}

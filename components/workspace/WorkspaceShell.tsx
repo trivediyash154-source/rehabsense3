@@ -24,6 +24,7 @@ import {
   History,
   LogOut,
   Target,
+  Radio,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { ThemeToggle } from "@/components/ui/Providers";
@@ -32,6 +33,7 @@ import { latest, type Session } from "@/lib/demo-data";
 import { useData } from "@/lib/api/DataProvider";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useLiveSessionHandle } from "./LiveSessionProvider";
+import { storePreference } from "@/lib/consent";
 
 /** The account's real, backend-enforced role — not the view toggle above. */
 /**
@@ -99,6 +101,7 @@ export function useWorkspace() {
 const routes = [
   { href: "/workspace", label: "Overview", icon: LayoutGrid, hint: "Recovery environment" },
   { href: "/workspace/live", label: "Live lab", icon: Activity, hint: "Biomechanics lab" },
+  { href: "/workspace/hardware", label: "Hardware", icon: Radio, hint: "Dual-IMU + force (v2)" },
   { href: "/workspace/focus", label: "Focus", icon: Target, hint: "Recovery focus" },
   { href: "/workspace/progress", label: "Progress", icon: Gauge, hint: "Recovery journey" },
   { href: "/workspace/sessions", label: "Sessions", icon: History, hint: "Movement replay" },
@@ -160,7 +163,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (next === "physio" && !canSwitch) return;
       setRoleState(next);
       try {
-        localStorage.setItem(roleKey, next);
+        storePreference(roleKey, next);
       } catch {
         /* not persisted */
       }

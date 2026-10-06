@@ -93,3 +93,9 @@ class ReportNotReady(AppError):
     code = "REPORT_NOT_READY"
     status_code = status.HTTP_409_CONFLICT
     default_message = "This report has not been generated yet."
+
+
+class BadRequest(AppError):
+    code = "BAD_REQUEST"
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_message = "The request is invalid."

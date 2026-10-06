@@ -1,0 +1,12 @@
+# Only backend/ and the two deployed model bundles enter the API image.
+**
+!backend/**
+!ml/artifacts/activity_bilateral/**
+!ml/artifacts/activity_single_side/**
+backend/.venv
+backend/**/__pycache__
+backend/.pytest_cache
+backend/*.db
+backend/*.db-*
+backend/var
+backend/.env

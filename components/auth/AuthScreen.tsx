@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -12,7 +12,7 @@ import {
   EyeOff,
   LoaderCircle,
   Check,
-  Phone,
+  RefreshCw,
   ShieldAlert,
   ShieldCheck,
 } from "lucide-react";
@@ -33,9 +33,11 @@ import {
 } from "@/lib/validations";
 import {
   AuthError,
+  checkApiAvailability,
   homeForRole,
   signIn,
   signUp,
+  type ApiAvailability,
   type UserRole,
 } from "@/lib/auth";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -67,125 +69,27 @@ const copy: Record<AuthMode, { title: string; description: string; submit: strin
     description: "Create a place for the work your body is doing.",
     submit: "Create account",
   },
+  // The three modes below have no delivery provider (email or SMS) and no
+  // backend endpoint, so their screens state that instead of offering a form.
   "forgot-password": {
-    title: "Find your way back.",
-    description: "Give us the email on the account and we'll help reconnect it.",
-    submit: "Send reset link",
+    title: "Password reset is not available.",
+    description:
+      "This prototype has no email provider connected, so it cannot send reset links. If you cannot sign in, contact the team running this RehabSense deployment.",
+    submit: "",
   },
   "verify-phone": {
-    title: "Confirm the connection.",
-    description: "Enter your number and the six-digit code to continue.",
-    submit: "Verify phone number",
+    title: "Phone verification is currently unavailable.",
+    description:
+      "No SMS provider is connected, so RehabSense never sends or checks phone codes. Email and password sign-in does not need a verified phone number.",
+    submit: "",
   },
   "verify-email": {
-    title: "One more connection.",
-    description: "Enter the six-digit code we would send to your inbox.",
-    submit: "Verify email",
+    title: "Email verification is currently unavailable.",
+    description:
+      "No email provider is connected, so no verification message is ever sent. Accounts created with email and password work without it.",
+    submit: "",
   },
 };
-
-/**
- * Six separate inputs with roving focus, paste support and backspace
- * navigation. The value is a plain string; a space marks an empty slot so
- * positions stay stable while the user edits in the middle.
- */
-function OtpInput({
-  value,
-  onChange,
-  error,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  error?: string;
-}) {
-  const refs = useRef<(HTMLInputElement | null)[]>([]);
-
-  useEffect(() => {
-    // Land the caret in the first empty slot when the step appears.
-    const first = Math.min(value.replace(/\s/g, "").length, 5);
-    refs.current[first]?.focus();
-    // Only on mount: re-focusing on every keystroke would fight the user.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const setDigit = (index: number, digit: string) => {
-    const next = value.padEnd(6, " ").split("");
-    next[index] = digit || " ";
-    onChange(next.join("").replace(/\s+$/, ""));
-  };
-
-  return (
-    <fieldset className="otp-field">
-      <legend>Verification code</legend>
-      <div className="otp-inputs">
-        {Array.from({ length: 6 }, (_, i) => (
-          <input
-            key={i}
-            ref={(element) => {
-              refs.current[i] = element;
-            }}
-            aria-label={`Verification code digit ${i + 1} of 6`}
-            aria-invalid={Boolean(error)}
-            aria-describedby={error ? "otp-error" : undefined}
-            inputMode="numeric"
-            pattern="\d*"
-            autoComplete={i === 0 ? "one-time-code" : "off"}
-            maxLength={1}
-            value={value[i] === " " ? "" : (value[i] ?? "")}
-            onChange={(event) => {
-              const digit = event.target.value.replace(/\D/g, "").slice(-1);
-              setDigit(i, digit);
-              if (digit) refs.current[Math.min(5, i + 1)]?.focus();
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Backspace" && !value[i]?.trim()) {
-                event.preventDefault();
-                setDigit(Math.max(0, i - 1), "");
-                refs.current[Math.max(0, i - 1)]?.focus();
-              }
-              if (event.key === "ArrowLeft") refs.current[Math.max(0, i - 1)]?.focus();
-              if (event.key === "ArrowRight") refs.current[Math.min(5, i + 1)]?.focus();
-            }}
-            onPaste={(event) => {
-              event.preventDefault();
-              const pasted = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-              if (!pasted) return;
-              onChange(pasted);
-              refs.current[Math.min(5, pasted.length)]?.focus();
-            }}
-          />
-        ))}
-      </div>
-      <span id="otp-error" className="field-error" role={error ? "alert" : undefined}>
-        {error}
-      </span>
-    </fieldset>
-  );
-}
-
-/** Brand glyphs drawn inline: no third-party script or remote asset. */
-function GoogleMark() {
-  return (
-    <span className="provider-mark provider-mark-google" aria-hidden="true">
-      <svg viewBox="0 0 18 18" width="15" height="15">
-        <path fill="#EA4335" d="M9 3.48c1.69 0 2.83.73 3.48 1.34l2.54-2.48C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.96l2.91 2.26C4.6 5.05 6.62 3.48 9 3.48z" />
-        <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72l2.84 2.2c1.66-1.53 2.76-3.79 2.76-6.56z" />
-        <path fill="#FBBC05" d="M3.88 10.78A5.54 5.54 0 0 1 3.58 9c0-.62.11-1.22.29-1.78L.96 4.96A8.99 8.99 0 0 0 0 9c0 1.45.35 2.82.96 4.04l2.92-2.26z" />
-        <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.84-2.2c-.76.53-1.78.9-3.12.9-2.38 0-4.4-1.57-5.13-3.74L.96 13.04C2.44 15.98 5.48 18 9 18z" />
-      </svg>
-    </span>
-  );
-}
-
-function FacebookMark() {
-  return (
-    <span className="provider-mark provider-mark-facebook" aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="#1877F2">
-        <path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.96h-1.51c-1.49 0-1.96.93-1.96 1.89v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z" />
-      </svg>
-    </span>
-  );
-}
 
 export function AuthScreen({ mode }: { mode: AuthMode }) {
   const router = useRouter();
@@ -194,19 +98,17 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
   const [showPassword, setShowPassword] = useState(false);
   const [notice, setNotice] = useState("");
   const [succeeded, setSucceeded] = useState(false);
-  const [providerBusy, setProviderBusy] = useState<"google" | "facebook" | "resend" | null>(null);
   const [terms, setTerms] = useState(false);
-  const [seconds, setSeconds] = useState(0);
+  const [api, setApi] = useState<ApiAvailability | null>(null);
 
-  const isVerify = mode.startsWith("verify");
   const isSignup = mode === "signup";
   const isLogin = mode === "login";
-  const isReset = mode === "forgot-password";
+  const hasForm = isLogin || isSignup;
+  const notConnected = api?.state === "not-connected";
 
   const {
     register,
     watch,
-    setValue,
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
@@ -219,33 +121,19 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
   const password = watch("password") ?? "";
   const strength = passwordStrength(password);
 
+  // Ask whether the API is reachable before anyone types a password.
+  const probeApi = useCallback(async () => {
+    setApi(null);
+    setApi(await checkApiAvailability());
+  }, []);
+
   useEffect(() => {
-    if (seconds <= 0) return;
-    const timer = setTimeout(() => setSeconds(seconds - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [seconds]);
+    if (hasForm) void probeApi();
+  }, [hasForm, probeApi]);
 
   async function submit(values: AuthValues) {
     setNotice("");
-    track(
-      isSignup
-        ? "signup_started"
-        : isReset
-          ? "password_reset_requested"
-          : mode === "verify-phone"
-            ? "phone_verification_started"
-            : "login_started",
-      { action: mode },
-    );
-
-    // Password reset and code verification have no delivery provider wired up,
-    // so they still say so rather than implying a message was sent.
-    if (!isLogin && !isSignup) {
-      setNotice(
-        "Message delivery is not configured in this prototype, so no email or code was sent.",
-      );
-      return;
-    }
+    track(isSignup ? "signup_started" : "login_started", { action: mode });
 
     try {
       const session = isSignup
@@ -296,28 +184,6 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
     }
   }
 
-  async function social(provider: "google" | "facebook") {
-    setProviderBusy(provider);
-    setNotice("");
-    track("social_auth_started", { provider });
-    // No reviewed OAuth adapter is configured, and pretending otherwise would
-    // imply an account was created. Email and password sign-in is real.
-    setNotice(
-      `${provider === "google" ? "Google" : "Facebook"} sign-in is not configured in this prototype. Use email and password — that works.`,
-    );
-    setProviderBusy(null);
-  }
-
-  async function resend() {
-    setProviderBusy("resend");
-    setNotice("");
-    track("verification_code_requested", { action: "resend" });
-    // No delivery provider is configured. The cooldown deliberately does not
-    // start, so the timer never implies a message that was never sent.
-    setNotice("Message delivery is not configured in this prototype. No code was sent.");
-    setProviderBusy(null);
-  }
-
   const field = (
     name: "name" | "email" | "password" | "confirmPassword",
     label: string,
@@ -357,7 +223,9 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
 
   const phoneField = (
     <div className="field">
-      <label htmlFor="auth-phone">Phone number</label>
+      <label htmlFor="auth-phone">
+        Phone number <span className="field-optional">(optional, not verified)</span>
+      </label>
       <div className="phone-row">
         <div className="select-wrap dial-select">
           <label className="sr-only" htmlFor="auth-dialCode">
@@ -404,22 +272,33 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
           <div className="demo-mode-banner" role="note">
             <ShieldCheck size={16} aria-hidden="true" />
             <div>
-              <strong>Research prototype — accounts are real</strong>
-              <p>
-                {isSignup || isLogin ? (
-                  <>
+              {!hasForm ? (
+                <>
+                  <strong>Research prototype — not configured</strong>
+                  <p>
+                    Email and SMS delivery are not configured, so no message or code is ever sent
+                    from RehabSense. Email and password sign-in does not depend on it.
+                  </p>
+                </>
+              ) : notConnected ? (
+                <>
+                  <strong>Research prototype — accounts unavailable here</strong>
+                  <p>
+                    This deployment is not connected to the RehabSense API, so accounts cannot be
+                    created or used. Nothing typed on this page is sent anywhere.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <strong>Research prototype — accounts are real</strong>
+                  <p>
                     Email and password sign-in creates a real account on the RehabSense backend:
                     your password is stored only as an Argon2id hash, and the session is held in a
-                    cookie no script on this page can read. Social sign-in and email or SMS
-                    delivery are not configured.
-                  </>
-                ) : (
-                  <>
-                    Email and SMS delivery is not configured in this prototype, so no message or
-                    code is sent from this screen. Email and password sign-in works.
-                  </>
-                )}
-              </p>
+                    cookie no script on this page can read. Social sign-in, phone sign-in and
+                    password reset are not available in this prototype.
+                  </p>
+                </>
+              )}
             </div>
           </div>
 
@@ -432,191 +311,139 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
           <h2 id="auth-title">{copy[mode].title}</h2>
           <p className="auth-description">{copy[mode].description}</p>
 
-          {(isLogin || isSignup) && (
-            <>
-              <div className="social-buttons">
-                <button
-                  className="button button-outline"
-                  type="button"
-                  disabled={providerBusy !== null}
-                  onClick={() => social("google")}
-                >
-                  {providerBusy === "google" ? (
-                    <LoaderCircle className="spin" size={16} aria-hidden="true" />
-                  ) : (
-                    <GoogleMark />
-                  )}
-                  Continue with Google
+          {hasForm && api === null && (
+            <p className="api-status" role="status">
+              <LoaderCircle className="spin" size={14} aria-hidden="true" />
+              Checking the connection to the RehabSense API…
+            </p>
+          )}
+          {hasForm && api && api.state !== "available" && (
+            <div className="form-alert api-alert" role="alert">
+              <ShieldAlert size={16} aria-hidden="true" />
+              <span>
+                {notConnected
+                  ? `${isSignup ? "Sign-up" : "Sign-in"} is unavailable. ${api.message}`
+                  : api.message}
+              </span>
+              {!notConnected && (
+                <button type="button" className="text-link" onClick={() => void probeApi()}>
+                  <RefreshCw size={14} aria-hidden="true" />
+                  Try again
                 </button>
-                <button
-                  className="button button-outline"
-                  type="button"
-                  disabled={providerBusy !== null}
-                  onClick={() => social("facebook")}
-                >
-                  {providerBusy === "facebook" ? (
-                    <LoaderCircle className="spin" size={16} aria-hidden="true" />
-                  ) : (
-                    <FacebookMark />
-                  )}
-                  Continue with Facebook
-                </button>
-                <Link className="button button-outline provider-phone" href="/verify-phone">
-                  <span className="provider-mark provider-mark-phone" aria-hidden="true">
-                    <Phone size={15} />
-                    <i className="phone-signal" />
-                  </span>
-                  Continue with phone number
-                </Link>
-              </div>
-              <div className="form-divider" aria-hidden="true">
-                <span className="divider-signal">
-                  <svg viewBox="0 0 120 12" preserveAspectRatio="none">
-                    <path d="M0 6 H62 l5 -5 l6 10 l6 -10 l5 5 H120" />
-                  </svg>
-                </span>
-                <span className="divider-label">or continue with email</span>
-                <span className="divider-signal divider-signal-flip">
-                  <svg viewBox="0 0 120 12" preserveAspectRatio="none">
-                    <path d="M0 6 H62 l5 -5 l6 10 l6 -10 l5 5 H120" />
-                  </svg>
-                </span>
-              </div>
-            </>
+              )}
+            </div>
           )}
 
-          <form onSubmit={handleSubmit(submit)} noValidate>
-            {isSignup && field("name", "Full name", "text", "name")}
-            {mode !== "verify-phone" && field("email", "Email address", "email", "email")}
-            {(isSignup || mode === "verify-phone") && phoneField}
-            {(isLogin || isSignup) &&
-              field("password", "Password", "password", isSignup ? "new-password" : "current-password")}
+          {hasForm && (
+            <form onSubmit={handleSubmit(submit)} noValidate>
+              <fieldset className="auth-fieldset" disabled={notConnected || succeeded}>
+                {isSignup && field("name", "Full name", "text", "name")}
+                {field("email", "Email address", "email", "email")}
+                {isSignup && phoneField}
+                {field("password", "Password", "password", isSignup ? "new-password" : "current-password")}
 
-            {isSignup && (
-              <>
-                <div
-                  className="password-strength"
-                  aria-live="polite"
-                  aria-label={`Password strength: ${password ? strengthLabels[strength] : "not entered"}`}
-                >
-                  <div className="strength-bars" aria-hidden="true">
-                    {[1, 2, 3, 4].map((n) => (
-                      <i key={n} className={strength >= n ? `filled level-${strength}` : ""} />
-                    ))}
-                  </div>
-                  <small>
-                    {password
-                      ? strengthLabels[strength]
-                      : "Use at least 12 characters. A long, unique passphrase is best."}
-                  </small>
-                </div>
-                {field("confirmPassword", "Confirm password", "password", "new-password")}
-
-                <div className="field">
-                  <label htmlFor="auth-role">I am a…</label>
-                  <div className="select-wrap">
-                    <select
-                      id="auth-role"
-                      {...register("role")}
-                      aria-invalid={Boolean(errors.role)}
-                      aria-describedby={errors.role ? "auth-role-error" : undefined}
+                {isSignup && (
+                  <>
+                    <div
+                      className="password-strength"
+                      aria-live="polite"
+                      aria-label={`Password strength: ${password ? strengthLabels[strength] : "not entered"}`}
                     >
-                      <option value="">Select your role</option>
-                      {authRoles.map((role) => (
-                        <option key={role}>{role}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {errors.role && (
-                    <span id="auth-role-error" className="field-error" role="alert">
-                      {errors.role.message}
-                    </span>
-                  )}
-                </div>
+                      <div className="strength-bars" aria-hidden="true">
+                        {[1, 2, 3, 4].map((n) => (
+                          <i key={n} className={strength >= n ? `filled level-${strength}` : ""} />
+                        ))}
+                      </div>
+                      <small>
+                        {password
+                          ? strengthLabels[strength]
+                          : "Use at least 12 characters. A long, unique passphrase is best."}
+                      </small>
+                    </div>
+                    {field("confirmPassword", "Confirm password", "password", "new-password")}
 
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    {...register("consent")}
-                    aria-describedby={errors.consent ? "auth-consent-error" : undefined}
-                  />
-                  <span>
-                    I accept the{" "}
-                    <button type="button" className="inline-button" onClick={() => setTerms(true)}>
-                      prototype terms and privacy notice
-                    </button>
-                    .
-                  </span>
-                </label>
-                {errors.consent && (
-                  <span id="auth-consent-error" className="field-error" role="alert">
-                    {errors.consent.message}
-                  </span>
+                    <div className="field">
+                      <label htmlFor="auth-role">I am a…</label>
+                      <div className="select-wrap">
+                        <select
+                          id="auth-role"
+                          {...register("role")}
+                          aria-invalid={Boolean(errors.role)}
+                          aria-describedby={errors.role ? "auth-role-error" : undefined}
+                        >
+                          <option value="">Select your role</option>
+                          {authRoles.map((role) => (
+                            <option key={role}>{role}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {errors.role && (
+                        <span id="auth-role-error" className="field-error" role="alert">
+                          {errors.role.message}
+                        </span>
+                      )}
+                    </div>
+
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        {...register("consent")}
+                        aria-describedby={errors.consent ? "auth-consent-error" : undefined}
+                      />
+                      <span>
+                        I accept the{" "}
+                        <button type="button" className="inline-button" onClick={() => setTerms(true)}>
+                          prototype terms and privacy notice
+                        </button>
+                        .
+                      </span>
+                    </label>
+                    {errors.consent && (
+                      <span id="auth-consent-error" className="field-error" role="alert">
+                        {errors.consent.message}
+                      </span>
+                    )}
+                  </>
                 )}
-              </>
-            )}
 
-            {isVerify && (
-              <>
-                <OtpInput
-                  value={watch("code")}
-                  onChange={(value) => setValue("code", value, { shouldValidate: false })}
-                  error={errors.code?.message}
-                />
+                {isLogin && (
+                  <Link className="forgot-link" href="/forgot-password">
+                    Forgot password?
+                  </Link>
+                )}
+
+                {notice && (
+                  <div className="form-alert" role="alert">
+                    <ShieldAlert size={16} aria-hidden="true" />
+                    <span>{notice}</span>
+                  </div>
+                )}
+
                 <button
-                  type="button"
-                  className="text-link resend-button"
-                  onClick={resend}
-                  disabled={seconds > 0 || providerBusy !== null}
+                  type="submit"
+                  className={`button full-width${succeeded ? " auth-succeeded" : ""}`}
+                  disabled={isSubmitting || succeeded || notConnected}
                 >
-                  {providerBusy === "resend" ? (
-                    <LoaderCircle className="spin" size={14} aria-hidden="true" />
-                  ) : null}
-                  {seconds > 0 ? `Resend available in ${seconds}s` : "Request / resend code"}
+                  {succeeded ? (
+                    <>
+                      <Check size={17} aria-hidden="true" />
+                      {isSignup ? "Account created" : "Signed in"}
+                    </>
+                  ) : isSubmitting ? (
+                    <>
+                      <LoaderCircle className="spin" size={17} aria-hidden="true" />
+                      {isSignup ? "Creating account…" : "Signing in…"}
+                    </>
+                  ) : (
+                    <>
+                      {copy[mode].submit}
+                      <ArrowUpRight size={17} aria-hidden="true" />
+                    </>
+                  )}
                 </button>
-                <p className="fine-print">
-                  No code has been sent. SMS and email verification require a configured provider.
-                  The resend cooldown starts only after a provider accepts a delivery request.
-                </p>
-              </>
-            )}
-
-            {isLogin && (
-              <Link className="forgot-link" href="/forgot-password">
-                Forgot password?
-              </Link>
-            )}
-
-            {notice && (
-              <div className="form-alert" role="alert">
-                <ShieldAlert size={16} aria-hidden="true" />
-                <span>{notice}</span>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className={`button full-width${succeeded ? " auth-succeeded" : ""}`}
-              disabled={isSubmitting || succeeded || providerBusy !== null}
-            >
-              {succeeded ? (
-                <>
-                  <Check size={17} aria-hidden="true" />
-                  {isSignup ? "Account created" : "Signed in"}
-                </>
-              ) : isSubmitting ? (
-                <>
-                  <LoaderCircle className="spin" size={17} aria-hidden="true" />
-                  Checking…
-                </>
-              ) : (
-                <>
-                  {copy[mode].submit}
-                  <ArrowUpRight size={17} aria-hidden="true" />
-                </>
-              )}
-            </button>
-          </form>
+              </fieldset>
+            </form>
+          )}
 
           <div className="auth-bottom">
             {isLogin ? (
@@ -630,7 +457,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
               </Link>
             )}
             <Link href="/dashboard" className="text-link">
-              Explore without an account
+              Explore the illustrative demo
               <ArrowUpRight size={15} aria-hidden="true" />
             </Link>
           </div>
@@ -644,19 +471,20 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
 
       <Modal open={terms} onClose={() => setTerms(false)} title="Prototype terms & privacy">
         <p>
-          This research interface exists to explore RehabSense. It is not a medical service, a
-          diagnostic device, or a production account system.
+          This research interface exists to explore RehabSense. It is not a medical service or a
+          diagnostic device.
         </p>
         <p>
-          Do not enter real passwords or sensitive health information. While no authentication
-          adapter is configured, the sign-in and sign-up forms validate locally and your entries
-          are never transmitted — the server is only asked whether authentication exists, and it
-          answers no.
+          Creating an account sends your name, email address, role and optional phone number to the
+          RehabSense API over HTTPS. Your password is stored only as an Argon2id hash, and your
+          session is kept in an HttpOnly cookie that page scripts cannot read. Phone numbers are
+          stored but never verified, and no email or SMS is ever sent.
         </p>
         <p>
-          Illustrative dashboard values are not personal medical records. Production terms, a named
-          data controller, retention periods, user-rights processes and authentication safeguards
-          must be established before any real account or health data is collected.
+          Do not enter sensitive health information or a password you use elsewhere. Illustrative
+          dashboard values are not personal medical records. Production terms, a named data
+          controller, retention periods and user-rights processes must be in place before real
+          patient data is collected.
         </p>
       </Modal>
     </main>

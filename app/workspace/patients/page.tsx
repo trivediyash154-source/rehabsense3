@@ -7,15 +7,24 @@ import { useRoster } from "@/lib/api/useRoster";
 import { patients as demoRoster } from "@/lib/demo-data";
 
 export default function PatientsPage() {
-  const { authenticated } = useData();
-  const { rows, loading } = useRoster(authenticated);
+  const { authenticated, mode } = useData();
+  // The demo roster only in illustrative mode (entered deliberately); a real
+  // account with no records shows zero, not invented patients.
+  const illustrative = mode === "illustrative";
+  const { rows, loading } = useRoster(authenticated && !illustrative);
 
-  const real = rows && rows.length > 0;
-  const roster = real ? rows : null;
-  const total = roster ? roster.length : demoRoster.length;
-  const flagged = roster
-    ? roster.filter((p) => p.attention !== "steady").length
-    : demoRoster.filter((p) => p.attention !== "steady").length;
+  const attention = illustrative
+    ? demoRoster.map((p) => p.attention)
+    : (rows ?? []).map((p) => p.attention);
+  const total = attention.length;
+  const flagged = attention.filter((a) => a !== "steady").length;
+  const rosterLabel = illustrative
+    ? "Illustrative"
+    : rows
+      ? "Assigned to you"
+      : loading
+        ? "…"
+        : "Unavailable";
 
   return (
     <>
@@ -28,8 +37,8 @@ export default function PatientsPage() {
           { label: "FLAGGED", value: loading ? "…" : String(flagged), tone: "amber" },
           {
             label: "ROSTER",
-            value: real ? "Assigned to you" : "Demo only",
-            tone: real ? "teal" : "violet",
+            value: rosterLabel,
+            tone: illustrative ? "violet" : rows ? "teal" : "amber",
           },
         ]}
       />

@@ -14,6 +14,7 @@ on behalf of an authenticated caller.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import threading
@@ -36,6 +37,15 @@ class Run:
 
 
 _runs: dict[int, Run] = {}
+
+
+def loopback_host(request) -> str:
+    """Where a simulator subprocess reaches THIS process: loopback plus the
+    port the server is listening on. The request's Host header is the public
+    name (behind TLS / a proxy it is not reachable as ws://host:port)."""
+    server = request.scope.get("server") or (None, None)
+    port = server[1] or int(os.environ.get("PORT", "8000"))
+    return f"127.0.0.1:{port}"
 _lock = threading.Lock()
 
 
@@ -102,6 +112,46 @@ def start(
         _runs[session_id] = run
 
     log_event(logger, "simulator_started", session_id=session_id,
+              scenario=scenario, duration_s=duration, pid=process.pid)
+    return run
+
+
+def start_hardware(
+    session_id: int,
+    *,
+    host: str,
+    scenario: str = "SYMMETRIC",
+    exercise: str = "SQUAT",
+    duration_s: int = DEFAULT_DURATION_S,
+    seed: int | None = None,
+    device_key: str | None = None,
+) -> Run:
+    """Start the dual-IMU (protocol v2) simulator for one session."""
+    duration = max(5, min(int(duration_s), MAX_DURATION_S))
+    with _lock:
+        _reap()
+        if session_id in _runs:
+            raise RuntimeError("A simulated stream is already running for this session.")
+        if len(_runs) >= MAX_CONCURRENT:
+            raise RuntimeError("Too many simulated streams are running. Try again shortly.")
+        argv = [
+            sys.executable, "-m", "app.simulator.dual_imu_simulator",
+            "--session-id", str(session_id),
+            "--host", host,
+            "--exercise", exercise,
+            "--scenario", scenario,
+            "--duration", str(duration),
+        ]
+        if seed is not None:
+            argv += ["--seed", str(seed)]
+        if device_key:
+            argv += ["--device-key", device_key]
+        process = subprocess.Popen(
+            argv, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, start_new_session=True,
+        )
+        run = Run(session_id=session_id, process=process, scenario=scenario)
+        _runs[session_id] = run
+    log_event(logger, "hw_simulator_started", session_id=session_id,
               scenario=scenario, duration_s=duration, pid=process.pid)
     return run
 

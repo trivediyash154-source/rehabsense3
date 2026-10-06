@@ -441,3 +441,9 @@ def downgrade() -> None:
 
     op.drop_table('devices')
     # ### end Alembic commands ###
+
+    if op.get_bind().dialect.name == "postgresql":
+        # drop_table leaves native enum types behind; without this a
+        # downgrade followed by an upgrade fails ("type ... already exists").
+        for enum_name in ('assignmentstatus', 'auditaction', 'calibrationstate', 'connectionstate', 'devicekind', 'devicestatus', 'exercisetype', 'leg', 'movementtype', 'notificationseverity', 'notificationtype', 'planstatus', 'reportkind', 'reportstatus', 'riskseverity', 'role', 'sensorlocation', 'sensorstatus', 'sensortype', 'sessionmode', 'sessionstatus'):
+            op.execute(f"DROP TYPE IF EXISTS {enum_name}")

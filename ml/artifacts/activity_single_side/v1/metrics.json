@@ -1,0 +1,206 @@
+{
+  "accuracy": 0.9054,
+  "macro_f1": 0.8952,
+  "per_class_f1": {
+    "cycling": 0.9831,
+    "lying": 0.9298,
+    "other_exercise": 0.9058,
+    "running": 0.9831,
+    "sitting": 0.7125,
+    "stairs_down": 0.8905,
+    "stairs_up": 0.8448,
+    "standing": 0.8791,
+    "walking": 0.9277
+  },
+  "confusion_matrix": [
+    [
+      16404,
+      0,
+      206,
+      0,
+      70,
+      17,
+      64,
+      82,
+      0
+    ],
+    [
+      18,
+      16282,
+      118,
+      0,
+      848,
+      1,
+      13,
+      144,
+      0
+    ],
+    [
+      11,
+      124,
+      33030,
+      69,
+      34,
+      214,
+      273,
+      180,
+      540
+    ],
+    [
+      0,
+      0,
+      61,
+      8532,
+      9,
+      17,
+      25,
+      89,
+      11
+    ],
+    [
+      43,
+      1192,
+      93,
+      1,
+      7066,
+      3,
+      10,
+      2130,
+      0
+    ],
+    [
+      1,
+      0,
+      947,
+      4,
+      62,
+      7536,
+      113,
+      149,
+      32
+    ],
+    [
+      45,
+      0,
+      1323,
+      1,
+      54,
+      112,
+      7260,
+      147,
+      162
+    ],
+    [
+      1,
+      1,
+      112,
+      7,
+      1099,
+      4,
+      32,
+      15824,
+      0
+    ],
+    [
+      5,
+      0,
+      2563,
+      0,
+      54,
+      177,
+      293,
+      174,
+      25733
+    ]
+  ],
+  "classes": [
+    "cycling",
+    "lying",
+    "other_exercise",
+    "running",
+    "sitting",
+    "stairs_down",
+    "stairs_up",
+    "standing",
+    "walking"
+  ],
+  "fold_macro_f1": [
+    0.874,
+    0.8982,
+    0.9141,
+    0.8888
+  ],
+  "robustness_macro_f1": {
+    "rotation": 0.8952,
+    "noise_x3": 0.8586,
+    "gyro_bias": 0.8939,
+    "accel_gain": 0.859,
+    "rate_5pct": 0.8834
+  },
+  "train_seconds_total": 182.5,
+  "latency_ms_p50": 4.957,
+  "latency_ms_p95": 5.048,
+  "model_bytes": 45464673,
+  "inference_peak_python_mem_bytes": 29972,
+  "confidence_threshold": 0.3,
+  "coverage_at_threshold": 0.9955,
+  "threshold_curve": {
+    "0.3": {
+      "accepted_accuracy": 0.9072,
+      "coverage": 0.9955
+    },
+    "0.35": {
+      "accepted_accuracy": 0.9107,
+      "coverage": 0.9886
+    },
+    "0.4": {
+      "accepted_accuracy": 0.9173,
+      "coverage": 0.9738
+    },
+    "0.45": {
+      "accepted_accuracy": 0.9246,
+      "coverage": 0.9538
+    },
+    "0.5": {
+      "accepted_accuracy": 0.9344,
+      "coverage": 0.9245
+    },
+    "0.55": {
+      "accepted_accuracy": 0.9452,
+      "coverage": 0.8893
+    },
+    "0.6": {
+      "accepted_accuracy": 0.9552,
+      "coverage": 0.8522
+    },
+    "0.65": {
+      "accepted_accuracy": 0.9626,
+      "coverage": 0.8149
+    },
+    "0.7": {
+      "accepted_accuracy": 0.9678,
+      "coverage": 0.7758
+    },
+    "0.75": {
+      "accepted_accuracy": 0.9723,
+      "coverage": 0.7316
+    },
+    "0.8": {
+      "accepted_accuracy": 0.9765,
+      "coverage": 0.6798
+    },
+    "0.85": {
+      "accepted_accuracy": 0.9795,
+      "coverage": 0.6175
+    },
+    "0.9": {
+      "accepted_accuracy": 0.9828,
+      "coverage": 0.5409
+    },
+    "0.95": {
+      "accepted_accuracy": 0.9863,
+      "coverage": 0.4177
+    }
+  },
+  "evaluation": "GroupKFold(4) by subject; out-of-fold; see benchmark report"
+}

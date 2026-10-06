@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { storePreference } from "@/lib/consent";
 
 export type RenderTier = "low" | "high";
 
@@ -104,7 +105,7 @@ export function SceneStatusProvider({ children }: { children: ReactNode }) {
   const setLite = useCallback((value: boolean) => {
     setLiteState(value);
     try {
-      localStorage.setItem(liteKey, String(value));
+      storePreference(liteKey, String(value));
     } catch {
       // Preference will not persist. Not worth surfacing.
     }

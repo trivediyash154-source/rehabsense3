@@ -1,0 +1,30 @@
+{
+  "provenance": "PUBLIC_DATASET_REPLAY",
+  "windows_scored": 1152,
+  "agreement_with_label": 0.9557,
+  "by_activity": {
+    "sitting": {
+      "correct": 192
+    },
+    "walking": {
+      "correct": 188,
+      "wrong": 4
+    },
+    "running": {
+      "correct": 155,
+      "wrong": 37
+    },
+    "stairs_up": {
+      "correct": 182,
+      "low_conf": 8,
+      "wrong": 2
+    },
+    "cycling": {
+      "correct": 192
+    },
+    "lying": {
+      "correct": 192
+    }
+  },
+  "scope": "Device-pipeline integrity on replayed public recordings (seen in training). Not a generalisation estimate and NOT hardware validation."
+}

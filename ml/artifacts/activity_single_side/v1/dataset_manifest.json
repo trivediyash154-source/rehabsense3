@@ -1,0 +1,52 @@
+{
+  "name": "Daily & Sports (each leg) + PAMAP2 (ankle)",
+  "sensor": "Xsens MTx and Colibri IMUs",
+  "components": [
+    {
+      "name": "Daily and Sports Activities (UCI)",
+      "sensor": "Xsens MTx (acc m/s^2 -> g, gyro rad/s -> deg/s)",
+      "placements": [
+        "LEG"
+      ],
+      "rate_hz": 25.0,
+      "archive": "daily+and+sports+activities.zip",
+      "archive_sha256": "f42ad7744ecf14151c9fa3a86dfb5b24de9d7cb7ffe956ef5de242983459c77e",
+      "subjects": 8,
+      "bilateral": true,
+      "force": false,
+      "excluded_activities": {
+        "a08": "moving around in an elevator"
+      },
+      "calibration_emulation": "per subject, standing segment a02/s01 = neutral pose; removed from training and evaluation"
+    },
+    {
+      "name": "PAMAP2 Physical Activity Monitoring (UCI), ankle IMU",
+      "sensor": "Colibri IMU, ankle (acc16 m/s^2 -> g, gyro rad/s -> deg/s)",
+      "placements": [
+        "ANKLE"
+      ],
+      "rate_hz_original": 100.0,
+      "rate_hz": 25.0,
+      "archive": "pamap2+physical+activity+monitoring.zip",
+      "archive_sha256_first64mb": "096e7c8dbfff2452c528fbcb2cd085fa1267ab20ac229592ec3cfa58bc3d4bcd",
+      "subjects": 9,
+      "bilateral": false,
+      "force": false,
+      "excluded_activities": {
+        "0": "transient",
+        "9": "watching TV",
+        "10": "computer work",
+        "11": "car driving",
+        "16": "vacuum cleaning",
+        "17": "ironing",
+        "18": "folding laundry",
+        "19": "house cleaning"
+      },
+      "calibration_emulation": "first 10 s of each subject's first standing recording = neutral pose; removed from training and evaluation"
+    }
+  ],
+  "placements": [
+    "LEG",
+    "ANKLE"
+  ]
+}

@@ -25,13 +25,19 @@ class Settings(BaseSettings):
     analytics_version: str = "mvp-1.0"
 
     # --- runtime ---
+    # development | test | production. Production is strict: every required
+    # variable must be set explicitly and nothing falls back to a dev default
+    # (see assert_production_safe).
+    environment: str = "development"
     debug: bool = True
     log_level: str = "INFO"
 
     # --- persistence ---
-    # SQLite by default (zero setup); point DATABASE_URL at PostgreSQL for
-    # production, matching the documented architecture.
+    # SQLite is the zero-setup DEVELOPMENT default only. Production requires
+    # an explicit PostgreSQL DATABASE_URL and refuses to start without one.
     database_url: str = "sqlite:///./rehabsense.db"
+    # Production refuses to serve until the schema is at the Alembic head.
+    require_migrated_schema: bool = False
 
     # --- security ---
     secret_key: str = DEV_SECRET
@@ -94,6 +100,68 @@ class Settings(BaseSettings):
     # --- trend engine ---
     trend_deviation_band: float = 0.15
 
+    # --- hardware v2: 1 ESP32 + 2 MPU6050 + N force channels ---
+    # Calibration: hold still, then a few slow repetitions.
+    hw_calibration_health_s: float = 1.0
+    hw_calibration_still_s: float = 3.0
+    hw_calibration_movement_s: float = 5.0
+    # Analysis window and stride when no model dictates the window. When an
+    # activity model is loaded, its own trained window length is used.
+    hw_window_s: float = 2.0
+    hw_stride_s: float = 0.5
+    # Rate of the decimated stream sent to dashboards for live charts.
+    hw_sensor_frame_hz: float = 25.0
+    # How often a movement assessment row is written during a session.
+    hw_assessment_interval_s: float = 5.0
+    # Simulated devices (simulated: true in the handshake) are refused when
+    # false. Leave on for development; turn off where only real hardware
+    # should ever be accepted.
+    allow_simulated_devices: bool = True
+    # Optional fleet secret for devices that have no key of their own
+    # (simulators, unregistered dev boards).
+    device_ingest_key: str | None = None
+    # When true, a non-simulated device must be registered and present its
+    # own key; anything else is refused (DEVICE_NOT_REGISTERED). Production
+    # forces this on.
+    require_registered_devices: bool = False
+
+    # --- object storage (exports, raw archives, model artifacts) ---
+    # local: a directory (development). s3: any S3-compatible service.
+    storage_backend: str = "local"
+    storage_local_dir: str = "./var/storage"
+    storage_s3_bucket: str | None = None
+    storage_s3_prefix: str = "rehabsense/"
+    storage_s3_endpoint_url: str | None = None
+    storage_s3_region: str | None = None
+
+    # --- request limits ---
+    max_request_bytes: int = 1_000_000
+
+    # --- raw sensor storage ---
+    # Raw dual-IMU samples are stored in compressed ~1 s chunks so sessions
+    # can become (consented) training data. They expire after this many days
+    # unless explicitly retained for training under an active consent.
+    store_raw_samples: bool = True
+    raw_sample_retention_days: int = 30
+
+    # --- ML model bundles (produced by ml/, never overwritten) ---
+    ml_model_dir: str = "../ml/artifacts"
+    ml_activity_model: str = "activity_bilateral"
+    ml_activity_model_version: str | None = None
+    ml_activity_model_single: str = "activity_single_side"
+    ml_activity_model_single_version: str | None = None
+
+    @field_validator("database_url", mode="after")
+    @classmethod
+    def _psycopg_driver(cls, value: str) -> str:
+        # Hosts hand out postgres:// or postgresql:// URLs. SQLAlchemy reads the
+        # former as an unknown dialect and the latter as psycopg2, which is not
+        # installed; the driver this API ships with is psycopg 3.
+        for scheme in ("postgres://", "postgresql://"):
+            if value.startswith(scheme):
+                return "postgresql+psycopg://" + value[len(scheme):]
+        return value
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, value):
@@ -122,12 +190,39 @@ class Settings(BaseSettings):
             "pain": self.weight_pain,
         }
 
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() == "production"
+
     def assert_production_safe(self) -> None:
         """Refuse to start with an unsafe configuration outside debug mode.
 
         Called from the startup lifespan, so a misconfigured deployment fails
         loudly at boot rather than silently serving patient data insecurely.
         """
+        import os
+
+        if self.is_production:
+            # Explicit, not defaulted: a missing variable must never silently
+            # become the development value (e.g. SQLite).
+            missing = [v for v in ("DATABASE_URL", "SECRET_KEY", "CORS_ORIGINS", "COOKIE_SECURE",
+                                   "STORAGE_BACKEND") if not os.environ.get(v)]
+            if missing:
+                raise RuntimeError(
+                    "ENVIRONMENT=production but these required variables are not set: "
+                    + ", ".join(missing) + ". No development defaults are used in production.")
+            if self.debug:
+                raise RuntimeError("ENVIRONMENT=production requires DEBUG=false.")
+            if not self.database_url.startswith(("postgresql://", "postgresql+psycopg://")):
+                raise RuntimeError(
+                    "ENVIRONMENT=production requires a PostgreSQL DATABASE_URL "
+                    "(postgresql+psycopg://...). SQLite is development-only.")
+            if self.storage_backend == "local" and not os.environ.get("STORAGE_LOCAL_DIR"):
+                raise RuntimeError(
+                    "ENVIRONMENT=production with STORAGE_BACKEND=local needs an explicit "
+                    "STORAGE_LOCAL_DIR on a persistent volume (or use STORAGE_BACKEND=s3).")
+            if self.storage_backend == "s3" and not self.storage_s3_bucket:
+                raise RuntimeError("STORAGE_BACKEND=s3 requires STORAGE_S3_BUCKET.")
         if self.debug:
             return
         if self.secret_key == DEV_SECRET:
@@ -193,4 +288,14 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    s = Settings()
+    if s.is_production:
+        import os
+
+        # Production posture is not optional.
+        s.require_registered_devices = True
+        s.require_migrated_schema = True
+        # Simulated devices only when explicitly enabled (e.g. a demo).
+        if "ALLOW_SIMULATED_DEVICES" not in os.environ:
+            s.allow_simulated_devices = False
+    return s

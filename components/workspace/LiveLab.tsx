@@ -201,7 +201,14 @@ export function LiveLab({ session }: { session: Session }) {
             {!running
               ? "NO STREAM · IDLE"
               : live.socket === "open"
-                ? `SIMULATED STREAM · ${live.sessionMode === "SIMULATED" ? "SIMULATED" : String(live.sessionMode)}`
+                ? // Labelled by the provenance the backend recorded, never assumed.
+                  live.sessionMode === "SIMULATED"
+                  ? "SIMULATED STREAM"
+                  : live.sessionMode === "LIVE"
+                    ? "LIVE STREAM · REGISTERED DEVICE"
+                    : live.sessionMode === "UNVERIFIED"
+                      ? "STREAM · UNVERIFIED DEVICE"
+                      : "STREAM · WAITING FOR DEVICE"
                 : live.socket === "reconnecting"
                   ? "STREAM · RECONNECTING"
                   : live.socket === "connecting"

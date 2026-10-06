@@ -1,0 +1,209 @@
+{
+  "evidence_level": "SIMULATED -- engineering characterisation only; not validation",
+  "mqi_version": "mqi-proto-v1",
+  "definition_sha256": "85c1a046825db92230ab7e0d0724178f610b97978b0d689386f37c9b760eace0",
+  "definition": {
+    "version": "mqi-proto-v1",
+    "weights": {
+      "symmetry": 1.0,
+      "rom_proxy_vs_baseline": 1.0,
+      "temporal_consistency": 1.0,
+      "smoothness": 1.0,
+      "force_consistency": 1.0,
+      "repetition_consistency": 1.0
+    },
+    "sparc_bounds": [
+      -7.0,
+      -1.5
+    ],
+    "min_reps": 3,
+    "low_confidence": 0.5,
+    "components": [
+      "force_consistency",
+      "repetition_consistency",
+      "rom_proxy_vs_baseline",
+      "smoothness",
+      "symmetry",
+      "temporal_consistency"
+    ],
+    "aggregation": "100 * weighted mean of available components"
+  },
+  "human_rating_comparison": "NOT DONE -- no human-rated recordings exist",
+  "directionality_vs_asymmetry": {
+    "0.0": {
+      "mqi": {
+        "n": 3,
+        "mean": 96.03,
+        "sd": 0.05,
+        "min": 96.0,
+        "max": 96.1
+      },
+      "symmetry_component": {
+        "n": 3,
+        "mean": 1.0,
+        "sd": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    "0.2": {
+      "mqi": {
+        "n": 3,
+        "mean": 91.0,
+        "sd": 0.16,
+        "min": 90.8,
+        "max": 91.2
+      },
+      "symmetry_component": {
+        "n": 3,
+        "mean": 0.91,
+        "sd": 0.0,
+        "min": 0.91,
+        "max": 0.91
+      }
+    },
+    "0.4": {
+      "mqi": {
+        "n": 3,
+        "mean": 88.47,
+        "sd": 0.17,
+        "min": 88.3,
+        "max": 88.7
+      },
+      "symmetry_component": {
+        "n": 3,
+        "mean": 0.82,
+        "sd": 0.0,
+        "min": 0.82,
+        "max": 0.82
+      }
+    },
+    "0.6": {
+      "mqi": {
+        "n": 3,
+        "mean": 80.8,
+        "sd": 0.14,
+        "min": 80.7,
+        "max": 81.0
+      },
+      "symmetry_component": {
+        "n": 3,
+        "mean": 0.73,
+        "sd": 0.0,
+        "min": 0.73,
+        "max": 0.73
+      }
+    },
+    "mqi_decreases_with_asymmetry": true
+  },
+  "noise_sensitivity": {
+    "1.0x": {
+      "mqi": {
+        "n": 3,
+        "mean": 96.03,
+        "sd": 0.05,
+        "min": 96.0,
+        "max": 96.1
+      },
+      "smoothness": {
+        "n": 3,
+        "mean": 0.83,
+        "sd": 0.0,
+        "min": 0.83,
+        "max": 0.83
+      }
+    },
+    "2.0x": {
+      "mqi": {
+        "n": 3,
+        "mean": 96.0,
+        "sd": 0.08,
+        "min": 95.9,
+        "max": 96.1
+      },
+      "smoothness": {
+        "n": 3,
+        "mean": 0.83,
+        "sd": 0.0,
+        "min": 0.83,
+        "max": 0.83
+      }
+    },
+    "4.0x": {
+      "mqi": {
+        "n": 3,
+        "mean": 95.7,
+        "sd": 0.42,
+        "min": 95.1,
+        "max": 96.0
+      },
+      "smoothness": {
+        "n": 3,
+        "mean": 0.83,
+        "sd": 0.0,
+        "min": 0.83,
+        "max": 0.83
+      }
+    },
+    "8.0x": {
+      "mqi": {
+        "n": 0
+      },
+      "smoothness": {
+        "n": 0
+      }
+    }
+  },
+  "missing_sensors": {
+    "both_imus_force": {
+      "mqi": 96.0,
+      "status": "OK",
+      "confidence": 0.913,
+      "unavailable_components": [
+        "rom_proxy_vs_baseline"
+      ]
+    },
+    "right_imu_missing": {
+      "mqi": 95.2,
+      "status": "OK",
+      "confidence": 0.816,
+      "unavailable_components": [
+        "symmetry",
+        "rom_proxy_vs_baseline"
+      ]
+    },
+    "no_force": {
+      "mqi": 95.6,
+      "status": "OK",
+      "confidence": 0.816,
+      "unavailable_components": [
+        "rom_proxy_vs_baseline",
+        "force_consistency"
+      ]
+    },
+    "right_missing_no_force": {
+      "mqi": 94.2,
+      "status": "OK",
+      "confidence": 0.707,
+      "unavailable_components": [
+        "symmetry",
+        "rom_proxy_vs_baseline",
+        "force_consistency"
+      ]
+    }
+  },
+  "repeatability_10_seeds": {
+    "n": 10,
+    "mean": 96.04,
+    "sd": 0.08,
+    "min": 95.9,
+    "max": 96.2,
+    "cv_pct": 0.08
+  },
+  "limitations": [
+    "Simulator kinematics are idealised; real noise, soft-tissue motion and strap slip are absent.",
+    "Equal weights are an assumption, not fitted.",
+    "SPARC bounds are provisional literature-range values, not norms for this device.",
+    "No comparison with human ratings; no statistical validity or reliability analysis."
+  ]
+}

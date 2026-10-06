@@ -1,0 +1,32 @@
+# Local, reproducible production-like stack: PostgreSQL 16 + the API.
+#   docker compose up -d db
+#   docker compose run --rm api alembic upgrade head
+#   docker compose up api
+# Not used by Vercel. Secrets here are development placeholders.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: rehabsense
+      POSTGRES_PASSWORD: rehabsense-dev-only
+      POSTGRES_DB: rehabsense
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+  api:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    depends_on: [db]
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "false"
+      DATABASE_URL: postgresql+psycopg://rehabsense:rehabsense-dev-only@db:5432/rehabsense
+      SECRET_KEY: dev-only-compose-secret-change-me-0123456789abcdef
+      CORS_ORIGINS: https://localhost:3000
+      COOKIE_SECURE: "true"
+      STORAGE_BACKEND: local
+      STORAGE_LOCAL_DIR: /data/storage
+      ALLOW_SIMULATED_DEVICES: "true"
+    ports: ["8000:8000"]
+    volumes: [storage:/data/storage]
+volumes:
+  pgdata: {}
+  storage: {}

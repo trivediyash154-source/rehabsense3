@@ -1,0 +1,30 @@
+{
+  "model": "rf_invariant",
+  "params": {
+    "bootstrap": true,
+    "ccp_alpha": 0.0,
+    "class_weight": "balanced_subsample",
+    "criterion": "gini",
+    "max_depth": null,
+    "max_features": "sqrt",
+    "max_leaf_nodes": null,
+    "max_samples": null,
+    "min_impurity_decrease": 0.0,
+    "min_samples_leaf": 2,
+    "min_samples_split": 2,
+    "min_weight_fraction_leaf": 0.0,
+    "monotonic_cst": null,
+    "n_estimators": 200,
+    "n_jobs": -1,
+    "oob_score": false,
+    "random_state": 0,
+    "verbose": 0,
+    "warm_start": false
+  },
+  "window_s": 2.0,
+  "stride_s": 0.5,
+  "selection_notes": [
+    "single-side model: rf_invariant at 2.0 s (S1 benchmark)"
+  ],
+  "selection_rule": "Select models from a benchmark report by a stated rule, then train bundles.\n\n    ml/.venv/bin/python ml/scripts/select_and_train.py ml/reports/benchmark_<stamp>.json\n\nSelection rule (fixed before looking at results, applied mechanically):\n\n  1. Deployable candidates are feature models on orientation-invariant\n     features (the backend runs scikit-learn bundles; see inference.py).\n  2. Window length: the *shortest* window whose macro-F1 is within 0.01 of\n     the best window for that model family. Shorter windows respond faster,\n     and a difference under 0.01 is within fold-to-fold noise here.\n  3. Among candidates at that window: highest macro-F1, subject to\n       - rotation robustness drop <= 0.03 macro-F1 (strap orientation changes)\n       - single-window p95 latency <= 50 ms\n     ties within 0.01 broken by smaller model size.\n  4. Deep models are reported alongside. If one beats the selected feature\n     model by >= 0.02 macro-F1 *and* passes (3), the report recommends adding\n     a deep-model runtime to the backend; it is not deployed silently."
+}
