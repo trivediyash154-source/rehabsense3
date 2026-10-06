@@ -32,7 +32,8 @@ CLINICAL VALIDATION:                NO
 ```
 POSTGRESQL:         TESTED (16.2, local server) · managed instance NOT TESTED
 API DOCKER IMAGE:   IMPLEMENTED · NOT TESTED (no Docker daemon)
-VERCEL:             DEPLOYED (frontend-only, BACKEND_ORIGIN=none) · https://rehabsense-platform.vercel.app
+VERCEL:             DEPLOYED: website + API container (free Hobby plan), Neon PostgreSQL 17
+                    https://rehabsense-platform.vercel.app · https://rehabsense-api.vercel.app
 OBJECT STORAGE:     TESTED with moto (S3 API emulation) · real bucket NOT TESTED
 FIRMWARE WSS:       compiles · NOT TESTED on a board
 ```

@@ -1,139 +1,91 @@
-# Deploying the RehabSense frontend to Vercel
+# RehabSense on Vercel (free Hobby plan)
 
-Vercel hosts **only the Next.js frontend**. The FastAPI service (REST,
-WebSockets, ML inference, simulator), PostgreSQL and object storage run
-elsewhere; see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for those.
+Everything runs on free tiers with no payment card:
 
-## Current deployment (2026-10-06)
+| Piece | Where | Project / ID |
+|---|---|---|
+| Next.js website | Vercel | `rehabsense-platform` (`prj_ohl5XWEARZ5eXHeFMtvBTX6SUJyS`), https://rehabsense-platform.vercel.app |
+| FastAPI backend (REST, WebSockets, ML inference, simulator) | Vercel container image (`backend/Dockerfile`, Fluid compute, region `cle1`) | `rehabsense-api` (`prj_ylHGtJbAT868yeCW1LtrslhN0Wz6`), https://rehabsense-api.vercel.app |
+| PostgreSQL 17 | Neon free plan, AWS us-east-2 | project `little-unit-00095075` |
 
-| | |
-|---|---|
-| Vercel project | `rehabsense-platform` (`prj_ohl5XWEARZ5eXHeFMtvBTX6SUJyS`), scope `trivediyash154-7968s-projects` |
-| Production URL | https://rehabsense-platform.vercel.app |
-| Mode | **Frontend-only** (`BACKEND_ORIGIN=none`): public pages and the illustrative demo work; sign-in, patients, sessions and live data answer `503 BACKEND_NOT_CONNECTED` because no API is hosted yet |
-| Root directory | the repository root (`/`) — that is where `package.json`, `app/` and `next.config.ts` live |
-| Framework / Node | Next.js 15.5 (App Router) · Node 24.x · install `npm ci` (`vercel.json`) |
-| Upload | 112 files, ~1.3 MB; `.vercelignore` keeps `backend/`, `ml/`, `firmware/`, `docs/`, `scripts/`, databases and env files out |
-
-The old project `rehabsense` (`rehabsense-alpha.vercel.app`, a stale
-2026-09-23 upload with no environment variables) is unrelated to this one.
-
----
-
-## 1. Validate locally (no Vercel account needed)
-
-```bash
-cd /path/to/rehabsense          # the repository root
-bash scripts/vercel_readiness_check.sh
+```
+Browser ──HTTPS──▶ rehabsense-platform.vercel.app (Next.js)
+   │                  └─ /api/*  ──rewrite──▶ rehabsense-api.vercel.app (FastAPI container)
+   └──WSS + 60 s ticket──────────────────────▶ rehabsense-api.vercel.app/ws/live/{session}
+ESP32 ──WSS + device key──────────────────────▶ rehabsense-api.vercel.app/ws/ingest/v2/{session}
+                                               FastAPI ──▶ Neon PostgreSQL (all records,
+                                                           raw samples, ML results)
+                                                       └─▶ LISTEN/NOTIFY live relay
 ```
 
-It copies exactly the files Vercel would upload, runs `npm ci`, TypeScript,
-ESLint, builds the app the way Vercel does (`VERCEL=1`) in three modes, and
-scans the browser bundle. Last line:
+## Keep the database: claim it before 2026-10-09 17:41 UTC
 
-- `VERCEL READY` — everything passed and a live API was verified (`REHABSENSE_API=https://…`)
-- `VERCEL READY — EXTERNAL BACKEND INFRASTRUCTURE REQUIRED` — frontend ready, no API verified
-- `NOT VERCEL READY` — fix the `[FAIL]` lines first
-
-## 2. Deploy with the Vercel CLI
+The Neon project was created without an account and is deleted at that time
+unless it is claimed into a Neon account (free; `trivediyash154@gmail.com`
+already has one). In a terminal on this Mac:
 
 ```bash
-cd /path/to/rehabsense
-npx vercel@latest login                          # browser approval
-npx vercel@latest link --project rehabsense-platform --yes
-npx vercel@latest                                # preview deployment (protected URL)
-npx vercel@latest --prod                         # production: rehabsense-platform.vercel.app
+npx neonctl@latest claim accept little-unit-00095075
 ```
 
-Build logs: `npx vercel@latest inspect <deployment-url> --logs`.
-Runtime logs: `npx vercel@latest logs --deployment <id> --since 1h`.
+It prints a link (valid 15 minutes): open it while signed in to Neon and
+confirm. The connection string does not change, so nothing else needs updating.
 
-Alternatively connect the Git repository in the Vercel dashboard (Project →
-Settings → Git); every push to `main` then deploys. Note that
-`trivediyash154-source/rehabsense3` is a **public** repository.
+## Free-plan behaviour (stated plainly)
 
-## 3. Vercel environment variables
+- Every request and WebSocket lasts at most 300 s; dashboards and the ESP32
+  firmware reconnect automatically.
+- The API scales to zero after 5 minutes without traffic; the next request
+  waits a few seconds while it starts (the website re-checks the session
+  instead of showing a signed-in user as signed out).
+- Several API instances may run at once. Live dashboard messages cross
+  instances through PostgreSQL LISTEN/NOTIFY (`LIVE_RELAY=postgres`); session
+  summaries are rebuilt from stored rows when the ending request reaches
+  another instance. Commands such as "Recalibrate" act only if they reach the
+  instance holding the device's stream.
+- The container disk is temporary (`/tmp`): stored export files do not
+  survive a restart; database data does.
+- Hobby usage limits apply; when exceeded, Vercel pauses functions until the
+  next cycle. Nothing is ever charged.
 
-Set in Vercel → Project → Settings → Environment Variables (Production and
-Preview). Changing one requires a redeploy.
+## Environment variables
 
-| Name | Purpose | Read by | When | Public / secret | Required |
-|---|---|---|---|---|---|
-| `BACKEND_ORIGIN` | API origin that `/api/*` is proxied to and the server-side session check calls. `none` = frontend-only | Next server (build: rewrites; runtime: session, `/backend-unavailable`) | build + runtime | not secret, but server-only (never `NEXT_PUBLIC_`) | **yes**: `https://api.<domain>` or `none` |
-| `NEXT_PUBLIC_WS_URL` | API WebSocket origin for the live view (WebSockets cannot go through Vercel) | browser | build (inlined) | public | **yes** when `BACKEND_ORIGIN` is a URL: `wss://api.<domain>` |
-| `NEXT_PUBLIC_SITE_URL` | canonical origin (metadata, robots, sitemap) | Next server | build | public | yes; on Vercel defaults to the project's production domain |
-| `CONTACT_DELIVERY_URL` / `CONTACT_DELIVERY_TOKEN` | contact-form delivery endpoint / its bearer token | Next server | runtime | URL public, **token secret** | optional (form says delivery is off) |
-| `CONTACT_RATE_LIMIT` / `CONTACT_RATE_WINDOW_SECONDS` | per-instance contact limiter | Next server | runtime | public | optional |
-| `NEXT_PUBLIC_ANALYTICS_ENABLED` | allow product events at all | browser | build | public | optional (default off) |
-| `ANALYTICS_INGEST_URL` / `ANALYTICS_INGEST_TOKEN` | event collector / its token | Next server | runtime | URL public, **token secret** | optional |
-| `NEXT_PUBLIC_CONTACT_PREFILL_NAME` | demo convenience | browser | build | public | optional, leave empty |
-
-Currently set on `rehabsense-platform`: `BACKEND_ORIGIN=none`,
+Website (`rehabsense-platform`): `BACKEND_ORIGIN=https://rehabsense-api.vercel.app`,
+`NEXT_PUBLIC_WS_URL=wss://rehabsense-api.vercel.app`,
 `NEXT_PUBLIC_SITE_URL=https://rehabsense-platform.vercel.app`.
 
-The build **fails on purpose** with `RehabSense deployment configuration
-invalid` when `BACKEND_ORIGIN` is unset (rather than `none`), when it or
-`NEXT_PUBLIC_WS_URL` is not https/wss, or when either points at a local
-address. No secret ever needs a `NEXT_PUBLIC_` name.
+API (`rehabsense-api`): `DATABASE_URL` (sensitive), `SECRET_KEY` (sensitive),
+`ENVIRONMENT=production`, `DEBUG=false`, `CORS_ORIGINS=https://rehabsense-platform.vercel.app`,
+`COOKIE_SECURE=true`, `STORAGE_BACKEND=local`, `STORAGE_LOCAL_DIR=/tmp/rehabsense-storage`,
+`ALLOW_SIMULATED_DEVICES=true`, `LIVE_RELAY=postgres`, `PORT=8000`,
+`RUN_MIGRATIONS_ON_START=false`, `LOG_LEVEL=INFO`.
 
-## 4. Backend environment variables (on the API host, never on Vercel)
+No secret is a `NEXT_PUBLIC_` variable, and secrets never appear in git.
 
-Names only; values and meaning in [backend/.env.example](backend/.env.example):
-`ENVIRONMENT`, `DEBUG`, `DATABASE_URL`, `SECRET_KEY`, `CORS_ORIGINS`,
-`COOKIE_SECURE`, `COOKIE_SAMESITE`, `STORAGE_BACKEND`, `STORAGE_LOCAL_DIR`,
-`STORAGE_S3_BUCKET`, `STORAGE_S3_PREFIX`, `STORAGE_S3_REGION`,
-`STORAGE_S3_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
-`ALLOW_SIMULATED_DEVICES`, `REQUIRE_REGISTERED_DEVICES`, `DEVICE_INGEST_KEY`,
-`RAW_SAMPLE_RETENTION_DAYS`, `STORE_RAW_SAMPLES`, `MAX_REQUEST_BYTES`,
-`ML_MODEL_DIR`, `ML_ACTIVITY_MODEL`, `ML_ACTIVITY_MODEL_SINGLE`,
-`ACCESS_TOKEN_MINUTES`, `REFRESH_TOKEN_DAYS`, `LOG_LEVEL`, `HW_*`.
+## Redeploy
 
-**`CORS_ORIGINS` must contain `https://rehabsense-platform.vercel.app`**
-(and any custom domain). The API refuses cookie-authenticated writes whose
-`Origin` is not listed, and requests proxied by Vercel keep the browser's
-`Origin`. Preview URLs are deliberately not listed, so previews cannot write
-to the production API.
-
-## 5. Production architecture
-
-```
- Browser ──HTTPS──▶ Vercel: Next.js (rehabsense-platform.vercel.app)
-   │                  ├─ pages, edge middleware (session guard)
-   │                  ├─ /api/contact, /api/events      (this app's own routes)
-   │                  └─ /api/*  ──HTTPS rewrite──▶ FastAPI  (BACKEND_ORIGIN)
-   │                                                 │
-   └──── WSS + 60 s ticket (NEXT_PUBLIC_WS_URL) ────▶ FastAPI (one process)
-                                                     ├─ REST, auth, devices, calibration
-                                                     ├─ /ws/ingest/v2 ◀── WSS ── ESP32
-                                                     ├─ /ws/live          (dashboards)
-                                                     ├─ ML inference (bundled models)
-                                                     ├──▶ PostgreSQL (all records)
-                                                     └──▶ S3 / R2   (exports, archives)
+```bash
+npx vercel@latest login
+# website (repository root; .vercelignore keeps backend/ml/firmware out)
+VERCEL_ORG_ID=team_2sBcwmlki2DTOyMtbjFvI4pi VERCEL_PROJECT_ID=prj_ohl5XWEARZ5eXHeFMtvBTX6SUJyS \
+  npx vercel@latest deploy --prod
+# API container (builds backend/Dockerfile on Vercel)
+VERCEL_ORG_ID=team_2sBcwmlki2DTOyMtbjFvI4pi VERCEL_PROJECT_ID=prj_ylHGtJbAT868yeCW1LtrslhN0Wz6 \
+  bash scripts/deploy_api_vercel.sh --prod
 ```
 
-Vercel never connects to PostgreSQL, never runs Python, never trains or loads
-models, and never holds a database or storage credential.
+Database migrations run before an API deploy that changes the schema:
+`cd backend && DATABASE_URL='<neon direct URL>' .venv/bin/python -m alembic upgrade head`
+(the API refuses to start if the schema is behind).
 
-## 6. Connecting the API later (switch off frontend-only mode)
+Checks: `bash scripts/vercel_readiness_check.sh` (website build) and
+`backend/.venv/bin/python scripts/deployment_check.py --api https://rehabsense-api.vercel.app --frontend https://rehabsense-platform.vercel.app`
+(creates clearly labelled test accounts).
 
-1. Host the API (docs/DEPLOYMENT.md steps 1–10) at `https://api.<domain>`,
-   with `CORS_ORIGINS=https://rehabsense-platform.vercel.app`.
-2. In Vercel set `BACKEND_ORIGIN=https://api.<domain>` and
-   `NEXT_PUBLIC_WS_URL=wss://api.<domain>` (Production + Preview).
-3. `npx vercel@latest --prod` (or redeploy from the dashboard).
-4. `REHABSENSE_API=https://api.<domain> REHABSENSE_FRONTEND=https://rehabsense-platform.vercel.app bash scripts/vercel_readiness_check.sh`
-   should end with `VERCEL READY`, then run
-   `scripts/deployment_check.py --api https://api.<domain> --frontend https://rehabsense-platform.vercel.app`
-   against staging data.
+## Connecting an ESP32
 
-## 7. Manual steps that cannot be automated from here
-
-- Hosting the FastAPI service, PostgreSQL and object storage (no connector
-  for an API host exists in this environment).
-- Optionally deleting the old `rehabsense` project (irreversible): Vercel
-  dashboard → project `rehabsense` → Settings → "Delete Project", or
-  `npx vercel@latest project remove rehabsense`.
-- The Vercel connector used here has no access to the
-  `trivediyash154-7968s-projects` scope for logs, deployment events and
-  protected previews (403). Re-authorize it on claude.ai with that scope if
-  those should work through the connector; the CLI works regardless.
+Register the board (admin or technician account: create one with
+`python -m scripts.create_user` against the Neon URL), then in `config.h`:
+`SERVER_HOST "rehabsense-api.vercel.app"`, `SERVER_PORT 443`,
+`SERVER_USE_TLS 1`, the issuing CA's PEM in `SERVER_CA_PEM`, and the device
+key. Not yet tested on a physical board.

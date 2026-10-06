@@ -5,9 +5,10 @@ root, `backend/`, `ml/`, `firmware/`). Status words used throughout:
 
 - **IMPLEMENTED**: the code exists.
 - **TESTED**: exercised by an automated test or a recorded local run (named).
-- **DEPLOYED**: running on real hosting. **Only the Next.js frontend is DEPLOYED**
-  (Vercel, frontend-only, https://rehabsense-platform.vercel.app, 2026-10-06;
-  see ../VERCEL_READINESS_REPORT.md). Nothing else is.
+- **DEPLOYED**: running on real hosting. Since 2026-10-07 the website and the
+  FastAPI backend are DEPLOYED on Vercel's free plan (the API as a container
+  image) with Neon PostgreSQL; see ../VERCEL_DEPLOYMENT.md. Object storage is
+  not deployed. The sections below describe the original audit.
 - **NOT TESTED**: implemented but never exercised.
 
 Companion documents: [DEPLOYMENT.md](DEPLOYMENT.md) (steps),

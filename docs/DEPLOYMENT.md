@@ -11,8 +11,11 @@ Two deployables plus two managed services:
 
 Why each piece sits where it does: [DEPLOYMENT_AUDIT.md](DEPLOYMENT_AUDIT.md).
 
-> **Status as of 2026-10-06:** the frontend is **deployed to Vercel in
-> frontend-only mode** (https://rehabsense-platform.vercel.app,
+> **Status as of 2026-10-07:** production runs on free tiers instead: website
+> and API container on Vercel, PostgreSQL on Neon (see
+> [../VERCEL_DEPLOYMENT.md](../VERCEL_DEPLOYMENT.md)). The steps below remain
+> the path for a paid container host. Earlier: the frontend was
+> **deployed to Vercel in frontend-only mode** (https://rehabsense-platform.vercel.app,
 > `BACKEND_ORIGIN=none`; see [../VERCEL_DEPLOYMENT.md](../VERCEL_DEPLOYMENT.md)).
 > Steps 1–10 and 12–15 have not been executed against real hosting: no API
 > host, managed PostgreSQL or bucket exists yet. Everything up to the image

@@ -10,8 +10,9 @@ clinically validated. Demo figures are invented and labelled as demo data;
 figures from the backend are research outputs from recorded (or explicitly
 SIMULATED) sessions. Nothing here diagnoses, treats or prescribes.
 
-Live frontend: https://rehabsense-platform.vercel.app (frontend-only until the
-API is hosted) · Vercel: [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md) ·
+Live: https://rehabsense-platform.vercel.app (website) and
+https://rehabsense-api.vercel.app (API), both on Vercel's free plan, with Neon
+PostgreSQL · [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md) ·
 Deployment: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (steps) ·
 [docs/DEPLOYMENT_AUDIT.md](docs/DEPLOYMENT_AUDIT.md) (what runs where) ·
 [docs/POSTGRESQL_VALIDATION.md](docs/POSTGRESQL_VALIDATION.md) ·
@@ -125,8 +126,8 @@ fallback in production.
 | ESP32 firmware (1 ESP32 + 2×MPU6050 + FSR) | Implemented, compiles; **not tested on a physical board** |
 | ML activity model | Validated on public datasets only; **0 human-labelled physical recordings** |
 | Clinical validity | **None.** Not a medical device |
-| Frontend on Vercel | **Deployed, frontend-only**: https://rehabsense-platform.vercel.app (no API connected yet; sign-in says so). See VERCEL_DEPLOYMENT.md |
-| API host, managed PostgreSQL, object storage | **Not deployed**; see docs/DEPLOYMENT.md |
+| Website + API on Vercel (free), PostgreSQL on Neon (free) | **Deployed and tested end to end** (sign-up, login, patients, sessions, device auth over WSS, simulator, ML inference, live dashboard). See VERCEL_DEPLOYMENT.md |
+| Object storage (S3/R2) | **Not deployed**; exports use the API's temporary disk |
 
 ### Contact delivery
 

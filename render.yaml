@@ -1,5 +1,7 @@
-# Render Blueprint: the RehabSense FastAPI backend on Render's FREE plan (no
-# card). The Next.js frontend is deployed on Vercel; PostgreSQL is on Neon.
+# Render Blueprint (alternative host, not used in production): the RehabSense
+# FastAPI backend on Render's free plan. Note: when tried on 2026-10-07 Render
+# asked for payment details, so production runs the API on Vercel instead
+# (VERCEL_DEPLOYMENT.md). PostgreSQL is on Neon.
 #
 # Free-plan limits, stated plainly: 512 MB RAM and a small shared CPU, the
 # service sleeps after ~15 min without traffic (the next request waits ~1 min

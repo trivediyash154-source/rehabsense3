@@ -1,4 +1,48 @@
-# RehabSense — Vercel readiness report
+# RehabSense — production status (updated 2026-10-07)
+
+**Current architecture** (all free plans, no payment card):
+
+```
+Vercel: Next.js website (rehabsense-platform.vercel.app)
+  ↓ /api/* rewrite                      Browser ── WSS + ticket ──┐
+Vercel: FastAPI container (rehabsense-api.vercel.app, Fluid compute, cle1) ◀┘
+  ├─▶ Neon PostgreSQL 17 (us-east-2): users, patients, sessions, devices,
+  │    calibrations, raw samples, ML results, audit; LISTEN/NOTIFY live relay
+  └─▶ ML inference in-process (SHA-256-verified bundles, both models)
+ESP32 ── WSS + per-device key ──▶ FastAPI   (not yet tested with a board)
+```
+
+**Verified on production** (live URLs, real browser + HTTP/WebSocket client):
+
+| Check | Result |
+|---|---|
+| Browser: sign-up → workspace → HttpOnly/Secure/SameSite=Lax cookie → sign-out → /workspace redirects → /me 401 → wrong password rejected → sign-in | 13/13 PASS |
+| System check (`scripts/deployment_check.py`, API + website): health, auth, IDOR, device auth over WSS (unregistered / wrong key / revoked refused, registered accepted), simulator → calibration → ML (`activity_bilateral/v1`) → repetitions → raw samples → integrity | 28 passed, 0 failed, 1 skipped (physical hardware) |
+| Browser live Hardware lab: own WSS to the API, live frames, SIMULATED label, calibration PASS | PASS (79 live frames) |
+
+**Problems found in production and fixed** (2026-10-07):
+1. No backend existed: deployed the existing Dockerfile as a Vercel container
+   (Hugging Face Docker Spaces and Fly.io need payment; Render asked for a card).
+2. Live dashboard empty across instances: PostgreSQL LISTEN/NOTIFY relay
+   (`LIVE_RELAY=postgres`); without it a second instance received 0 frames.
+3. ML summary missing when the ending request hit another instance: rebuilt
+   summaries now include stored activity windows.
+4. Simultaneous cold starts crashed one instance while seeding exercises: seeding is race-safe.
+5. Cold-start API rendered signed-in users as signed out: the website now re-checks.
+6. New accounts could not open the Hardware lab: ungated, like the Live lab.
+7. Earlier the same day: misleading Google/Facebook/phone/reset flows removed or
+   marked unavailable; optional, unverified phone at sign-up; cookie consent banner.
+
+**Remaining**: claim the Neon database before 2026-10-09 17:41 UTC (see
+VERCEL_DEPLOYMENT.md); object storage not deployed (exports use temporary
+disk); physical hardware NOT TESTED; clinical validation NONE.
+
+**Verdict: PRODUCTION READY — EXTERNAL INFRASTRUCTURE STILL REQUIRED**
+(the Neon claim, S3/R2 storage for durable exports, and physical-hardware validation).
+
+---
+
+## Earlier report (2026-10-06, website-only stage)
 
 Date: 2026-10-06. Scope: deploying the existing Next.js frontend to a **new**
 Vercel project, `rehabsense-platform`, through the real Vercel build
