@@ -12,12 +12,18 @@ import { backendConnected, backendOrigin } from "@/lib/config.server";
  */
 const BACKEND_ORIGIN = backendOrigin();
 
-export async function getServerUser(): Promise<SessionUser | null> {
+/**
+ * `resolved` is false when the backend did not answer (timeout, network
+ * error, 5xx): "nobody is signed in" and "the API is waking up" must not look
+ * the same, or a serverless cold start would render a signed-in user as
+ * signed out with nothing to correct it. Unresolved, the client asks again.
+ */
+export async function getServerUser(): Promise<{ user: SessionUser | null; resolved: boolean }> {
   // Frontend-only deployment (BACKEND_ORIGIN=none): nobody can be signed in.
-  if (!backendConnected()) return null;
+  if (!backendConnected()) return { user: null, resolved: true };
   const jar = await cookies();
   const cookieHeader = jar.toString();
-  if (!cookieHeader) return null;
+  if (!cookieHeader) return { user: null, resolved: true };
 
   try {
     // A short timeout: a hung backend must not hold the page render open.
@@ -34,15 +40,17 @@ export async function getServerUser(): Promise<SessionUser | null> {
     } finally {
       clearTimeout(timer);
     }
-    if (!response.ok) return null;
+    // 401/403: a definite "not signed in". Anything else non-OK: no answer.
+    if (response.status === 401 || response.status === 403) return { user: null, resolved: true };
+    if (!response.ok) return { user: null, resolved: false };
 
     // The body can be empty when the API is mid-restart; parsing it
     // unguarded throws "Unexpected end of JSON input" and 500s the page.
     const body = (await response.json().catch(() => null)) as { user?: SessionUser } | null;
-    return body?.user ?? null;
+    return body?.user ? { user: body.user, resolved: true } : { user: null, resolved: false };
   } catch {
-    // Backend unreachable: render as signed out rather than failing the page.
-    // Protected data is fetched separately and will report its own state.
-    return null;
+    // Backend unreachable or slow to wake: let the client ask again rather
+    // than declaring the visitor signed out.
+    return { user: null, resolved: false };
   }
 }

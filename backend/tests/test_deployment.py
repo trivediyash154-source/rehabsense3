@@ -275,3 +275,56 @@ def test_a_switched_off_model_is_reported_not_loaded_and_not_degraded(client, mo
         from app.api.health import health_ready  # noqa: F401  (route import sanity)
     finally:
         model_store.reset()
+
+
+def test_rebuilt_summary_reports_persisted_activity_windows(client, clinician, patient_record):
+    """Multi-instance hosts: the instance ending a session may not hold its
+    live processor, so the summary is rebuilt from rows -- including ML."""
+    from app.core.config import get_settings
+    from app.db.database import SessionLocal
+    from app.db.models.sensing import ActivityResult, InferenceStatus
+    from app.db.models.session import Session as SessionModel
+    from app.services.sensing_service import summary_from_persisted
+
+    sid = client.post("/api/sessions", headers=clinician["headers"],
+                      json={"patient_id": patient_record["id"], "exercise_type": "SQUAT"}).json()["id"]
+    db = SessionLocal()
+    try:
+        for i in range(4):
+            db.add(ActivityResult(session_id=sid, t_start=i * 0.5, t_end=i * 0.5 + 2.0,
+                                  status=InferenceStatus.OK, activity="squat", confidence=0.9,
+                                  model_ref="activity_bilateral/v1"))
+        db.add(ActivityResult(session_id=sid, t_start=2.0, t_end=4.0, status=InferenceStatus.LOW_CONFIDENCE,
+                              candidate="walk", confidence=0.4, model_ref="activity_bilateral/v1"))
+        db.commit()
+        summary = summary_from_persisted(db, db.get(SessionModel, sid))
+    finally:
+        db.close()
+    act = summary["activity"]
+    assert summary["rebuilt_from_persisted"] is True
+    assert act["model"] == "activity_bilateral/v1" and act["windows"] == 5
+    assert act["low_confidence_windows"] == 1 and act["unavailable_reason"] is None
+    assert act["seconds_by_activity"] == {"squat": round(4 * get_settings().hw_stride_s, 1)}
+
+
+def test_live_relay_is_off_by_default_and_skips_oversized_messages(monkeypatch):
+    """The PostgreSQL relay (multi-instance hosts) never runs unless enabled,
+    and never tries to send a payload PostgreSQL would reject."""
+    from app.core.config import get_settings
+    from app.realtime import pg_relay
+
+    delivered = []
+
+    async def deliver(sid, msg):
+        delivered.append((sid, msg))
+
+    relay = pg_relay.PgRelay(deliver)
+    assert pg_relay.relay_enabled() is False
+    relay.publish(1, {"type": "hw_sensor_frame", "rows": []})   # no-op: nothing started
+    assert relay._publisher is None and relay.stats()["enabled"] is False
+
+    monkeypatch.setattr(get_settings(), "live_relay", "postgres")
+    monkeypatch.setattr(get_settings(), "database_url", "postgresql+psycopg://u:p@db/rs")
+    assert pg_relay.relay_enabled() is True
+    relay.publish(1, {"type": "hw_sensor_frame", "rows": ["x" * 9000]})
+    assert relay.skipped_large == 1 and relay._publisher is None

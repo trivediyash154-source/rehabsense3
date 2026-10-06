@@ -146,6 +146,10 @@ class Settings(BaseSettings):
 
     # --- ML model bundles (produced by ml/, never overwritten) ---
     ml_model_dir: str = "../ml/artifacts"
+    # Cross-instance live relay for dashboards: "postgres" on hosts that run
+    # several API instances (e.g. Vercel Fluid compute), "off" for one process.
+    live_relay: str = "off"
+
     ml_activity_model: str = "activity_bilateral"
     ml_activity_model_version: str | None = None
     ml_activity_model_single: str = "activity_single_side"

@@ -13,6 +13,8 @@ import { useData } from "@/lib/api/DataProvider";
  */
 const ALWAYS_AVAILABLE = [
   "/workspace/live",
+  // The hardware lab (protocol v2) is the other place a first session starts.
+  "/workspace/hardware",
   "/workspace/devices",
   "/workspace/settings",
   // Focus is where a first target gets set, so it must work on a brand-new

@@ -6,6 +6,7 @@ Reference data only — no patients, sessions or metrics are invented here.
 from __future__ import annotations
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as DbSession
 
 from app.db.models.exercise import Exercise, MovementType
@@ -64,6 +65,9 @@ CATALOGUE = [
 
 
 def seed_exercises(db: DbSession) -> int:
+    """Insert missing catalogue rows. Safe to run from several API instances
+    starting at once (serverless cold starts): if another instance inserted
+    the same rows first, the unique key rejects ours and that is success."""
     created = 0
     for entry in CATALOGUE:
         existing = db.execute(
@@ -73,5 +77,9 @@ def seed_exercises(db: DbSession) -> int:
             continue
         db.add(Exercise(**entry))
         created += 1
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return 0
     return created

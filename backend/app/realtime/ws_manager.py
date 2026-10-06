@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from fastapi import WebSocket
 
 from app.core.logging import get_logger, log_event
+from app.realtime.pg_relay import PgRelay
 
 logger = get_logger("rehabsense.ws")
 
@@ -64,6 +65,9 @@ class WebSocketManager:
     def __init__(self) -> None:
         self._hubs: dict[int, SessionHub] = {}
         self._lock = asyncio.Lock()
+        # Other API instances' live messages arrive through PostgreSQL when
+        # LIVE_RELAY=postgres (multi-instance hosts); a no-op otherwise.
+        self.relay = PgRelay(self._deliver_local)
 
     def hub(self, session_id: int) -> SessionHub:
         hub = self._hubs.get(session_id)
@@ -79,6 +83,7 @@ class WebSocketManager:
             hub.subscribers.add(sub)
         for message in hub.snapshot():
             sub.offer(message)
+        self.relay.ensure_listening()
         log_event(logger, "dashboard_subscribed", session_id=session_id,
                   subscribers=len(hub.subscribers))
         return sub
@@ -95,6 +100,11 @@ class WebSocketManager:
 
     async def broadcast(self, session_id: int, message: dict) -> None:
         """Fan out one event. Never awaits a socket; only fills queues."""
+        await self._deliver_local(session_id, message)
+        # Dashboards attached to other instances get it through the relay.
+        self.relay.publish(session_id, message)
+
+    async def _deliver_local(self, session_id: int, message: dict) -> None:
         hub = self._hubs.get(session_id)
         if hub is None:
             hub = self.hub(session_id)

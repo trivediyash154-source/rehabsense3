@@ -545,11 +545,34 @@ def session_chunks(db: DbSession, session_id: int) -> list[SensorSampleChunk]:
 def summary_from_persisted(db: DbSession, session: SessionModel) -> dict:
     """Rebuild a minimal v2 summary when the live processor is gone.
 
-    Happens if the server restarted mid-session. Only what was persisted can
-    be reported: repetition rows and the latest window assessment. It says so.
+    Happens if the server restarted mid-session, or on a multi-instance host
+    when the request that ends the session reaches a different instance than
+    the one that processed the stream. Only what was persisted can be
+    reported: repetition rows, per-window activity results and the latest
+    window assessment. It says so.
     """
     reps = db.execute(select(RepetitionResult).where(
         RepetitionResult.session_id == session.id)).scalars().all()
+    # Every analysed window persists one ActivityResult, so the activity
+    # section is recomputed exactly as the live processor accumulates it:
+    # one stride of time per OK window, LOW_CONFIDENCE counted separately.
+    acts = db.execute(select(ActivityResult).where(
+        ActivityResult.session_id == session.id)).scalars().all()
+    stride = get_settings().hw_stride_s
+    seconds: dict[str, float] = {}
+    for a in acts:
+        if a.status is InferenceStatus.OK and a.activity:
+            seconds[a.activity] = seconds.get(a.activity, 0.0) + stride
+    models = [a.model_ref for a in acts if a.model_ref]
+    activity = {
+        "model": max(set(models), key=models.count) if models else None,
+        "seconds_by_activity": {k: round(v, 1) for k, v in seconds.items()},
+        "classified_seconds": round(sum(seconds.values()), 1),
+        "windows": len(acts),
+        "low_confidence_windows": sum(1 for a in acts if a.status is InferenceStatus.LOW_CONFIDENCE),
+        "unavailable_reason": None if models else (
+            "no activity windows were persisted" if not acts else "no window had a model available"),
+    }
     last = db.execute(select(MovementAssessment).where(
         MovementAssessment.session_id == session.id).order_by(
         MovementAssessment.t_end.desc())).scalars().first()
@@ -573,6 +596,7 @@ def summary_from_persisted(db: DbSession, session: SessionModel) -> dict:
         "session_mode": session.mode.value,
         "repetitions": len(reps),
         "repetition_summary": by_side,
+        "activity": activity,
         "bilateral": None if last is None else last.bilateral,
         "force_motion": None if last is None else last.force_motion,
         "movement_quality": None if last is None else last.quality,

@@ -67,7 +67,7 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   // Resolved server-side so the first paint already knows who is signed in.
-  const user = await getServerUser();
+  const { user, resolved } = await getServerUser();
 
   return (
     <html lang="en" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
@@ -80,7 +80,7 @@ export default async function RootLayout({
           Skip to content
         </a>
         <Providers>
-          <AuthProvider initialUser={user} serverResolved>
+          <AuthProvider initialUser={user} serverResolved={resolved}>
             <SceneStatusProvider>
               <SceneLayer />
               <CursorField />
