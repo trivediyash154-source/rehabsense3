@@ -10,7 +10,9 @@ services:
     name: rehabsense-api
     runtime: docker
     plan: free
-    region: singapore
+    # Same AWS region as the Neon database (us-east-2): every request makes
+    # several queries, so the API sits next to the data, not next to users.
+    region: ohio
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
     healthCheckPath: /api/health
