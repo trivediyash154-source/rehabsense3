@@ -4,8 +4,14 @@ import { WorkspaceHeader } from "@/components/workspace/WorkspaceShell";
 import { ExerciseStudio } from "@/components/workspace/ExerciseStudio";
 import { exercises } from "@/lib/demo-data";
 import { useData } from "@/lib/api/DataProvider";
+import { ExerciseAnalyticsView } from "@/components/movement/ExerciseAnalyticsView";
 
 export default function ExercisesPage() {
+  const { hasMovement } = useData();
+  return hasMovement ? <ExerciseAnalyticsView /> : <ExerciseLibrary />;
+}
+
+function ExerciseLibrary() {
   const { sessions } = useData();
   const recorded = new Set(sessions.map((s) => s.exercise)).size;
   return (

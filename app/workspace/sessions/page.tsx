@@ -10,8 +10,15 @@ import {
 } from "@/lib/demo-data";
 import { useData } from "@/lib/api/DataProvider";
 import { useReplay } from "@/lib/api/useReplay";
+import { MovementSessions } from "@/components/movement/MovementSessions";
 
 export default function SessionsPage() {
+  const { hasMovement } = useData();
+  // Hardware-v2 sessions: the table of every session, each opening its replay.
+  return hasMovement ? <MovementSessions /> : <KneeAngleSessions />;
+}
+
+function KneeAngleSessions() {
   const { sessions, mode } = useData();
   const { session, setSession } = useWorkspace();
   const recorded = useReplay(session.id, mode === "live");

@@ -126,12 +126,14 @@ fallback in production.
 |---|---|
 | Landing page, navigation, theming | Implemented |
 | Sign up / sign in | Implemented against the FastAPI backend (Argon2id, HttpOnly cookie) |
-| Google / Facebook sign-in | Implemented (real OAuth, server-side verification, identity table, no email merge); **live once the provider credentials are set** |
+| Google / Facebook sign-in | Implemented (real OAuth, server-side verification, identity table, no email merge). **Google is live**; Facebook is live once its credentials are set |
 | Password reset email, SMS verification | **Not configured**; the screens say so |
 | Account deletion | Implemented (Settings → Delete account) |
 | Contact form | Implemented; **delivery is off** until configured |
 | Demo dashboard | Implemented against **illustrative, invented data**, labelled as such |
 | Workspace (patients, sessions, live view, hardware lab) | Implemented against the backend |
+| Synthetic demonstration cohort (5 fictional records + 1 public-dataset reference, 69 sessions) | **Generated data, labelled everywhere.** Streamed through the real ingestion, calibration, ML and analytics pipeline by `backend/scripts/seed_demo_data.py`. Not patient data, not hardware data, not clinical evidence. See [docs/SYNTHETIC_DEMONSTRATION_DATA.md](docs/SYNTHETIC_DEMONSTRATION_DATA.md) |
+| Movement progress reports (PDF) | Implemented: frozen report payload rendered server-side. Every page states its provenance and "research prototype, not a medical device" |
 | FastAPI service, PostgreSQL schema, ingestion, analytics, ML inference | Implemented; tested on SQLite and PostgreSQL 16.2 |
 | ESP32 firmware (1 ESP32 + 2×MPU6050 + FSR) | Implemented, compiles; **not tested on a physical board** |
 | ML activity model | Validated on public datasets only; **0 human-labelled physical recordings** |

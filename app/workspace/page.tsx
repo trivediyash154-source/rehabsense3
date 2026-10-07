@@ -18,8 +18,21 @@ import {
 } from "@/lib/demo-data";
 import { useData } from "@/lib/api/DataProvider";
 import { useSessionDetail } from "@/lib/api/useSessionDetail";
+import { MovementOverview } from "@/components/movement/MovementOverview";
+import { PatientMovementView } from "@/components/movement/PatientMovementView";
 
 export default function OverviewPage() {
+  const { hasMovement, patient } = useData();
+  const { role } = useWorkspace();
+  // Hardware-v2 records have their own indicators (movement quality,
+  // asymmetry, activity); the knee-angle overview below is for v1 sessions.
+  if (hasMovement) {
+    return role === "physio" ? <MovementOverview /> : patient ? <PatientMovementView patientId={patient.id} variant="detail" /> : null;
+  }
+  return <RecordOverview />;
+}
+
+function RecordOverview() {
   const { session, setSession, role } = useWorkspace();
   const { sessions, mode, patient } = useData();
   const cycle = useAnimatedCycle(3.4);

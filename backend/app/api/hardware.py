@@ -61,7 +61,7 @@ from app.schemas.session import (
 from app.sensing import baseline as baseline_mod
 from app.sensing import model_store
 from app.sensing.processor import PIPELINE_VERSION
-from app.services import audit_service, authz, sensing_service, sim_runner
+from app.services import audit_service, authz, movement_analytics, sensing_service, sim_runner
 from app.services.hw_registry import hw_registry
 
 router = APIRouter(tags=["hardware"])
@@ -339,6 +339,12 @@ def session_analysis(session_id: int, user: CurrentUser, db: DbDep):
             "force_motion": session_row.force_motion,
         },
         "baseline_comparison": comparison,
+        "provenance": _provenance_of(session),
+        "generation": movement_analytics.generation_view(session),
+        "patient_id": session.patient_id,
+        "started_at": utc_iso(session.started_at),
+        "ended_at": utc_iso(session.ended_at),
+        "calibration_state": session.calibration_state.value,
         "validation": {"rehabsense_hardware": "NOT_VALIDATED", "clinical": "NOT_VALIDATED"},
     }
     if not clinical and summary:
@@ -346,6 +352,28 @@ def session_analysis(session_id: int, user: CurrentUser, db: DbDep):
         out["summary"] = {k: v for k, v in summary.items()
                           if k not in ("calibration", "stream", "latency", "data_quality", "device")}
     return out
+
+
+@router.get("/sessions/{session_id}/trace")
+def session_trace(session_id: int, user: CurrentUser, db: DbDep,
+                  max_rows: int = Query(default=3000, ge=10, le=18000)):
+    """The decimated per-side movement trace kept when the session ended.
+
+    Calibrated |a|, bias-corrected |w|, segment tilt and force for each side:
+    the same frames the live dashboard received, so a replay shows what the
+    pipeline computed rather than an animation.
+    """
+    from app.db.models.sensing import SessionTrace
+
+    session = _session(db, user, session_id)
+    row = db.get(SessionTrace, session_id)
+    if row is None:
+        raise NotFound("No movement trace was stored for this session.")
+    rows = row.rows
+    step = max(1, -(-len(rows) // max_rows))
+    return {"session_id": session_id, "rate_hz": row.rate_hz / step, "columns": row.columns,
+            "units": row.units, "rows": rows[::step], "truncated": row.truncated,
+            "provenance": _provenance_of(session), "exercise_type": session.exercise_type.value}
 
 
 def _provenance_of(session: SessionModel) -> str:
@@ -838,7 +866,8 @@ def label_inventory(user: CurrentUser, db: DbDep):
         raise Forbidden("Available to clinicians and admins.")
     recs = db.execute(select(Recording)).scalars().all()
     out = {p: {"recordings": 0, "human_labeled": 0, "gold": 0, "silver": 0, "unlabeled": 0}
-           for p in ("PHYSICAL_REGISTERED", "PHYSICAL_UNVERIFIED", "SIMULATED", "PUBLIC_DATASET_REPLAY")}
+           for p in ("PHYSICAL_REGISTERED", "PHYSICAL_UNVERIFIED", "SIMULATED", "PUBLIC_DATASET_REPLAY",
+                     "SYNTHETIC_DEMONSTRATION")}
     for r in recs:
         labels = db.execute(select(SessionLabel).where(SessionLabel.session_id == r.session_id)).scalars().all()
         row = out.setdefault(r.provenance, {"recordings": 0, "human_labeled": 0, "gold": 0,

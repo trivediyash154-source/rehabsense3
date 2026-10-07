@@ -106,6 +106,10 @@ class Session(Base, TimestampMixin):
         server_default=RecordingMode.STANDARD.value, nullable=False)
     # Research recordings: protocol id/version, subject code, conditions.
     research_protocol: Mapped[dict | None] = mapped_column(JSON)
+    # How a generated or replayed session was produced: generator version,
+    # seed, inputs, source dataset, model version, generation timestamp.
+    # NULL for anything recorded from a person.
+    generation: Mapped[dict | None] = mapped_column(JSON)
 
     # Idempotency key so a retried "start session" cannot create a duplicate.
     idempotency_key: Mapped[str | None] = mapped_column(String(80), unique=True, index=True)

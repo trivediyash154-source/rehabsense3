@@ -158,6 +158,16 @@ def end_session(
     quality = summary.get("data_quality", {})
     if quality.get("calibration_left") == "COMPLETE" or quality.get("calibration_right") == "COMPLETE":
         session.calibration_state = CalibrationState.COMPLETE
+    # Hardware v2 reports one device calibration verdict (PASS / WARN / FAIL /
+    # SKIPPED) rather than one state per leg node.
+    v2_status = quality.get("calibration_status")
+    if v2_status in ("PASS", "WARN"):
+        session.calibration_state = CalibrationState.COMPLETE
+    elif v2_status == "FAIL":
+        session.calibration_state = CalibrationState.FAILED
+    v2_quality = (summary.get("calibration") or {}).get("quality")
+    if v2_status and isinstance(v2_quality, (int, float)):
+        session.calibration_quality = float(v2_quality)
     db.flush()
 
     audit_service.record(

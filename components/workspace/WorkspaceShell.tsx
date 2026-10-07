@@ -25,7 +25,9 @@ import {
   LogOut,
   Target,
   Radio,
+  FlaskConical,
 } from "lucide-react";
+import { DemoBanner } from "@/components/movement/Provenance";
 import { Logo } from "@/components/brand/Logo";
 import { ThemeToggle } from "@/components/ui/Providers";
 import { LiteToggle } from "@/components/three/SceneContext";
@@ -109,6 +111,7 @@ const routes = [
   { href: "/workspace/exercises", label: "Exercises", icon: Dumbbell, hint: "Exercise studio" },
   { href: "/workspace/devices", label: "Devices", icon: Cpu, hint: "Sensor constellation" },
   { href: "/workspace/patients", label: "Patients", icon: Users, hint: "Clinician command centre", physioOnly: true },
+  { href: "/workspace/research", label: "Research", icon: FlaskConical, hint: "Dataset, model, movement", physioOnly: true },
   { href: "/workspace/settings", label: "Settings", icon: Settings2, hint: "Preferences" },
 ];
 
@@ -181,7 +184,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 export function WorkspaceShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { session, setSession, role, setRole, canSwitch } = useWorkspace();
-  const { mode, sessions, patients, patient, selectPatient, skipped, simulated } = useData();
+  const { mode, sessions, patients, patient, selectPatient, skipped, simulated, synthetic, sourceLabel,
+    hasMovement, movementCount } = useData();
   const { user, signOut } = useAuth();
   const { sessionId: liveSessionId } = useLiveSessionHandle();
   const router = useRouter();
@@ -202,7 +206,24 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   const [navOpen, setNavOpen] = useState(false);
 
   const visible = routes.filter((r) => !r.physioOnly || role === "physio");
-  const activeIndex = visible.findIndex((r) => r.href === pathname);
+  // Detail routes (/workspace/patients/12) keep their section highlighted.
+  const activeIndex = visible.findIndex(
+    (r) => r.href === pathname || (r.href !== "/workspace" && pathname.startsWith(`${r.href}/`)),
+  );
+  // What the figures are, by provenance first: synthetic or replayed data is
+  // never announced as plain "live backend data".
+  const sourceText =
+    sourceLabel === "SYNTHETIC_DEMONSTRATION"
+      ? "SYNTHETIC DEMONSTRATION DATA"
+      : sourceLabel === "PUBLIC_DATASET_REPLAY"
+        ? "PUBLIC DATASET REPLAY"
+        : MODE_LABEL[mode];
+  const sourceHint =
+    sourceLabel === "SYNTHETIC_DEMONSTRATION"
+      ? "Generated movement streamed through the real pipeline for demonstration. Not patient data; not clinical evidence."
+      : sourceLabel === "PUBLIC_DATASET_REPLAY"
+        ? "Public recordings replayed through the device pipeline. Not RehabSense hardware data."
+        : MODE_HINT[mode];
 
   const jump = useCallback(
     (delta: number) => {
@@ -234,9 +255,9 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
               opacity: activeIndex < 0 ? 0 : 1,
             }}
           />
-          {visible.map((route) => {
+          {visible.map((route, index) => {
             const Icon = route.icon;
-            const active = pathname === route.href;
+            const active = index === activeIndex;
             return (
               <Link
                 key={route.href}
@@ -292,6 +313,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
 
       {/* -------- main -------- */}
       <div className="ws-main">
+        {synthetic && <DemoBanner />}
         <header className="ws-topbar">
           <button
             type="button"
@@ -307,9 +329,12 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
             {/* Never implies live data: the source is stated outright. */}
             {/* States what these figures are. "Recorded" is only ever shown
                 when every number on screen came back from the backend. */}
-            <span className={`ws-source src-${mode}`} title={MODE_HINT[mode]}>
+            <span
+              className={`ws-source src-${mode}${sourceLabel === "SYNTHETIC_DEMONSTRATION" ? " src-synthetic" : ""}${sourceLabel === "PUBLIC_DATASET_REPLAY" ? " src-replay" : ""}`}
+              title={sourceHint}
+            >
               <i aria-hidden="true" />
-              <span className="mono">{MODE_LABEL[mode]}</span>
+              <span className="mono">{sourceText}</span>
             </span>
             {patients.length > 1 && (
               <label className="ws-patient-pick">
@@ -354,9 +379,11 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                 count nothing has verified. */}
             <span className="ws-live-dot" aria-hidden="true" />
             <span className="mono">
-              {sessions.length === 0
-                ? "NO SESSION SELECTED"
-                : `${session.reps} REPS · COVERAGE ${session.coverage}% · ${session.confidence.toUpperCase()} CONFIDENCE · ${session.date}`}
+              {sessions.length > 0
+                ? `${session.reps} REPS · COVERAGE ${session.coverage}% · ${session.confidence.toUpperCase()} CONFIDENCE · ${session.date}`
+                : hasMovement
+                  ? `${movementCount} MOVEMENT SESSIONS · PROTOCOL v2 · ${patient?.name?.toUpperCase() ?? ""}`
+                  : "NO SESSION SELECTED"}
             </span>
             {liveSessionId != null && (
               /* A stream keeps running when the user leaves the lab; say so

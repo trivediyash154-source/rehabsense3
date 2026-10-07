@@ -13,6 +13,7 @@ import { api, ApiError, type ApiPatient } from "./client";
 import {
   adaptMilestones,
   adaptSessions,
+  hasMovementAnalytics,
   type ApiProgress,
   type ApiSessionBrief,
 } from "./adapters";
@@ -49,7 +50,13 @@ export type DataMode =
   | "illustrative";
 
 /** Where the numbers on screen came from. Derived, never hand-written. */
-export type DataSourceLabel = "REAL" | "SIMULATED" | "ILLUSTRATIVE" | "UNAVAILABLE";
+export type DataSourceLabel =
+  | "REAL"
+  | "SIMULATED"
+  | "SYNTHETIC_DEMONSTRATION"
+  | "PUBLIC_DATASET_REPLAY"
+  | "ILLUSTRATIVE"
+  | "UNAVAILABLE";
 
 const DEMO_KEY = "rehabsense-illustrative-mode";
 
@@ -76,6 +83,12 @@ type DataContextValue = {
   analyticsVersion: string | null;
   /** True when every displayed session came from a simulated sensor stream. */
   simulated: boolean;
+  /** The selected record has hardware-v2 (dual IMU) movement sessions. */
+  hasMovement: boolean;
+  /** Completed v2 sessions of the selected record with indicators. */
+  movementCount: number;
+  /** Some record this account can see is synthetic demonstration data. */
+  synthetic: boolean;
   error: string | null;
   refresh: () => Promise<void>;
   /** Explicit opt in/out of the illustrative dataset. */
@@ -99,6 +112,9 @@ const DataContext = createContext<DataContextValue>({
   totalRepetitions: null,
   analyticsVersion: null,
   simulated: false,
+  hasMovement: false,
+  movementCount: 0,
+  synthetic: false,
   error: null,
   refresh: async () => undefined,
   enterIllustrative: () => undefined,
@@ -154,7 +170,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
           wanted = null;
         }
       }
-      const chosen = roster.find((p) => p.id === wanted) ?? roster[0] ?? null;
+      // Without a stored choice: a real person's record first, then the
+      // first synthetic demonstration record; a public-dataset reference
+      // record is never the default.
+      const byId = [...roster].sort((a, b) => a.id - b.id);
+      const chosen =
+        roster.find((p) => p.id === wanted) ??
+        byId.find((p) => !p.provenance) ??
+        byId.find((p) => p.provenance === "SYNTHETIC_DEMONSTRATION") ??
+        roster[0] ??
+        null;
       setPatient(chosen);
 
       if (!chosen) {
@@ -166,7 +191,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const loaded = (await api.progress(chosen.id)) as unknown as ApiProgress;
       setProgress(loaded);
       const usable = adaptSessions(loaded.sessions ?? []).sessions;
-      setMode(usable.length > 0 ? "live" : "empty");
+      const movement = (loaded.sessions ?? []).filter(hasMovementAnalytics);
+      setMode(usable.length > 0 || movement.length > 0 ? "live" : "empty");
     } catch (cause) {
       // A failure here is a failure, not an empty account. Saying "no data"
       // would hide a broken endpoint behind a plausible-looking screen.
@@ -234,14 +260,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const sessions = usingDemo ? demoSessions : hasLive ? liveRows : EMPTY;
     const simulated =
       hasLive && (progress?.sessions ?? []).every((s) => s.mode === "SIMULATED");
+    const movementCount = usingDemo
+      ? 0
+      : (progress?.sessions ?? []).filter(hasMovementAnalytics).length;
+    const hasMovement = effectiveMode === "live" && movementCount > 0;
+    const synthetic = !usingDemo && patients.some((p) => p.provenance === "SYNTHETIC_DEMONSTRATION");
+    const recordProvenance = usingDemo ? null : (patient?.provenance ?? null);
 
     const sourceLabel: DataSourceLabel = usingDemo
       ? "ILLUSTRATIVE"
-      : hasLive
-        ? simulated
-          ? "SIMULATED"
-          : "REAL"
-        : "UNAVAILABLE";
+      : recordProvenance === "SYNTHETIC_DEMONSTRATION" && (hasLive || hasMovement)
+        ? "SYNTHETIC_DEMONSTRATION"
+        : recordProvenance === "PUBLIC_DATASET_REPLAY" && (hasLive || hasMovement)
+          ? "PUBLIC_DATASET_REPLAY"
+          : hasLive
+            ? simulated
+              ? "SIMULATED"
+              : "REAL"
+            : hasMovement
+              ? "REAL"
+              : "UNAVAILABLE";
 
     return {
       mode: effectiveMode,
@@ -261,6 +299,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       totalRepetitions: usingDemo ? null : (progress?.total_repetitions ?? null),
       analyticsVersion: usingDemo ? null : (progress?.analytics_version ?? null),
       simulated,
+      hasMovement,
+      movementCount,
+      synthetic,
       error,
       refresh: load,
       enterIllustrative,

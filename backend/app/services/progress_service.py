@@ -95,6 +95,13 @@ def session_brief(session: SessionModel) -> dict:
         "peak_angle_left_deg": summary.get("peak_angle_left_deg"),
         "peak_angle_right_deg": summary.get("peak_angle_right_deg"),
         "mode": session.mode.value,
+        # Hardware v2 (dual IMU) sessions carry different indicators; the
+        # knee-angle fields above are null for them by design.
+        "protocol_version": summary.get("protocol_version") or session.protocol_version,
+        "provenance": session.provenance,
+        "mqi": (summary.get("movement_quality") or {}).get("mqi"),
+        "asymmetry_pct": (None if (summary.get("bilateral") or {}).get("asymmetry_score") is None
+                          else round(summary["bilateral"]["asymmetry_score"] * 100, 1)),
     }
 
 

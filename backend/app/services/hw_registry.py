@@ -243,6 +243,8 @@ class HardwareRegistry:
             self._stamp(hw, tail)
         await self._dispatch(hw, tail + reps)
 
+        trace = hw.processor.trace()
+
         def _session_row():
             db = SessionLocal()
             try:
@@ -251,6 +253,7 @@ class HardwareRegistry:
                     "bilateral": summary["bilateral"], "force_motion": summary["force_motion"],
                     "movement_quality": summary["movement_quality"],
                 }, kind=AssessmentKind.SESSION)
+                sensing_service.persist_trace(db, session_id, trace)
                 db.commit()
             finally:
                 db.close()

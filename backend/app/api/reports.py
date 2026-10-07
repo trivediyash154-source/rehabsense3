@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -13,6 +13,7 @@ from app.core.exceptions import Forbidden, NotFound, ReportNotFound, ReportNotRe
 from app.core.security import generate_share_token, hash_share_token
 from app.db.models.audit import AuditAction
 from app.db.models.base import as_utc, utc_iso
+from app.db.models.patient import PatientProfile
 from app.db.models.report import Report, ReportKind, ReportShare, ReportStatus
 from app.db.models.session import Session as SessionModel
 from app.services import audit_service, authz, progress_service, report_service
@@ -70,6 +71,17 @@ def generate_report(report_id: int, user: CurrentUser, db: DbDep):
     report.status = ReportStatus.GENERATING
     db.flush()
 
+    if report.kind is ReportKind.MOVEMENT_PROGRESS:
+        report_service.generate_movement_report(db, report, patient, actor_id=user.id)
+        audit_service.record(
+            db, action=AuditAction.REPORT_GENERATED, entity_type="report",
+            entity_id=report.id, actor_id=user.id, patient_id=patient.id, kind=report.kind.value,
+        )
+        db.commit()
+        db.refresh(report)
+        return {"id": report.id, "status": report.status.value,
+                "generated_at": utc_iso(report.generated_at)}
+
     if report.kind is ReportKind.SESSION_SUMMARY and report.session_id:
         session = db.get(SessionModel, report.session_id)
         if session is None or session.patient_id != patient.id:
@@ -121,18 +133,27 @@ def list_reports(
         stmt = stmt.where(Report.patient_id == patient_id)
 
     rows = db.execute(stmt.order_by(Report.created_at.desc()).limit(limit).offset(offset)).scalars().all()
-    return {
-        "items": [
-            {
-                "id": r.id, "patient_id": r.patient_id, "session_id": r.session_id,
-                "kind": r.kind.value, "status": r.status.value,
-                "generated_at": utc_iso(r.generated_at),
-                "analytics_version": r.analytics_version, "report_version": r.report_version,
-            }
-            for r in rows
-        ],
-        "total": len(rows), "limit": limit, "offset": offset,
-    }
+    patients = {p.id: p for p in db.execute(select(PatientProfile).where(
+        PatientProfile.id.in_({r.patient_id for r in rows} or {-1}))).scalars()}
+    items = []
+    for r in rows:
+        payload = r.payload_patient or {}
+        summary = payload.get("summary") or {}
+        p = patients.get(r.patient_id)
+        items.append({
+            "id": r.id, "patient_id": r.patient_id, "session_id": r.session_id,
+            "kind": r.kind.value, "status": r.status.value,
+            "generated_at": utc_iso(r.generated_at),
+            "analytics_version": r.analytics_version, "report_version": r.report_version,
+            "patient_name": p.name if p else None,
+            "provenance": payload.get("provenance") or (p.provenance if p else None),
+            "title": payload.get("title"),
+            "sessions": summary.get("sessions_completed"),
+            "period_days": (payload.get("period") or {}).get("days"),
+            "status_label": summary.get("status"),
+            "pdf": r.kind is ReportKind.MOVEMENT_PROGRESS and r.status is ReportStatus.READY,
+        })
+    return {"items": items, "total": len(rows), "limit": limit, "offset": offset}
 
 
 @router.get("/{report_id}")
@@ -156,6 +177,30 @@ def get_report(report_id: int, user: CurrentUser, db: DbDep):
         "report_version": report.report_version,
         "payload": payload,
     }
+
+
+@router.get("/{report_id}/pdf")
+def report_pdf(report_id: int, user: CurrentUser, db: DbDep):
+    """The report as a PDF, rendered from its frozen payload (role-aware)."""
+    from app.services.pdf_report import render_movement_report
+
+    report = db.get(Report, report_id)
+    if report is None:
+        raise ReportNotFound()
+    patient = _owned(db, user, report)
+    if report.status is not ReportStatus.READY:
+        raise ReportNotReady()
+    if report.kind is not ReportKind.MOVEMENT_PROGRESS:
+        raise NotFound("Only movement progress reports have a PDF rendering.")
+    payload = (report.payload_clinician if authz.can_view_clinical_detail(db, user, patient)
+               else report.payload_patient)
+    pdf = render_movement_report(payload, report_id=report.id)
+    slug = "".join(ch if ch.isalnum() else "-" for ch in (patient.name or "record").lower()).strip("-")
+    filename = f"rehabsense-movement-report-{report.id}-{slug[:40] or 'record'}.pdf"
+    return Response(content=pdf, media_type="application/pdf", headers={
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Cache-Control": "private, no-store",
+    })
 
 
 @router.post("/{report_id}/share", status_code=status.HTTP_201_CREATED)

@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 
 from app.api import (  # noqa: E402
+    analytics,
     dev,
     focus,
     auth,
@@ -197,6 +198,7 @@ for prefix in (API, f"{API}/v1"):
     app.include_router(dev.router, prefix=prefix)
     app.include_router(notifications.router, prefix=prefix)
     app.include_router(hardware.router, prefix=prefix)
+    app.include_router(analytics.router, prefix=prefix)
 
 # WebSockets are unprefixed, exactly as the hardware contract specifies.
 app.include_router(realtime.router)

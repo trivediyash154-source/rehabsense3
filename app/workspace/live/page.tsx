@@ -1,26 +1,28 @@
 "use client";
 
+import { Suspense } from "react";
 import { WorkspaceHeader, useWorkspace } from "@/components/workspace/WorkspaceShell";
 import { LiveLab } from "@/components/workspace/LiveLab";
-
-import { exerciseLabels } from "@/lib/demo-data";
+import { LiveLabModes } from "@/components/movement/LiveLabModes";
+import { Loading } from "@/components/movement/Bits";
 
 export default function LivePage() {
   const { session } = useWorkspace();
   return (
     <>
       <WorkspaceHeader
-        eyebrow="BIOMECHANICS LAB"
+        eyebrow="LIVE LAB"
         title="Watch the pipeline run."
-        lede="A simulated stream drives limb angles, repetition detection, symmetry and cadence — the same chain a connected sensor would."
+        lede="Three separate sources, never mixed: a stored synthetic session replayed in real time, a real ESP32 once one connects, or the two-node simulator."
         stats={[
-          { label: "EXERCISE", value: exerciseLabels[session.exercise] },
-          { label: "NODES", value: "2 simulated", tone: "violet" },
-          { label: "STREAM", value: "Not connected", tone: "amber" },
+          { label: "SYNTHETIC", value: "Replay of stored output", tone: "violet" },
+          { label: "REAL ESP32", value: "Waits for a device", tone: "amber" },
+          { label: "HARDWARE VALIDATION", value: "Not validated", tone: "amber" },
         ]}
       />
-      <LiveLab session={session} />
-
+      <Suspense fallback={<Loading what="the live lab" />}>
+        <LiveLabModes legacy={<LiveLab session={session} />} />
+      </Suspense>
     </>
   );
 }

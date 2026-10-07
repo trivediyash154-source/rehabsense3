@@ -198,3 +198,115 @@ def build_replay(db: DbSession, session: SessionModel) -> dict:
         ],
         "responsible_use": RESPONSIBLE_USE,
     }
+
+
+# --------------------------------------------------------------------- #
+# hardware-v2 movement progress report
+# --------------------------------------------------------------------- #
+
+MOVEMENT_REPORT_VERSION = "movement-1.0"
+
+
+def build_movement_report(db: DbSession, patient, *, include_clinical: bool) -> dict:
+    """The longitudinal movement report, frozen from stored session data.
+
+    Every figure comes from `movement_analytics` (itself a read of what the
+    pipeline stored), so the report, the dashboard and the PDF agree.
+    """
+    from app.services import movement_analytics as ma
+
+    mv = ma.patient_movement(db, patient)
+    sm = mv["summary"]
+    provenance = sm.get("provenance") or patient.provenance
+    labels = ma.labels_for(provenance)
+    disclaimers = [d for d in (labels["provenance"], ma.PROTOTYPE_NOTICE, ma.RESEARCH_LABEL,
+                               "Not a medical record. Not for diagnosis or treatment decisions.") if d]
+    sessions = [{
+        "id": r["id"], "started_at": r["started_at"], "exercise_type": r["exercise_type"],
+        "duration_s": r["duration_s"], "repetitions": r["repetitions"], "mqi": r["mqi"],
+        "asymmetry_pct": r["asymmetry_pct"], "confidence_pct": r["confidence_pct"],
+        "calibration_status": r["calibration_status"], "activity_top": r["activity_top"],
+        "model": r["model"], "provenance": r["provenance"], "programme_day": r["programme_day"],
+    } for r in mv["sessions"]]
+    report = {
+        "type": "MOVEMENT_PROGRESS",
+        "report_version": MOVEMENT_REPORT_VERSION,
+        "title": "Movement progress report",
+        "generated_at": utc_iso(datetime.now(timezone.utc)),
+        "patient": {"id": patient.id, "name": patient.name, "program": patient.program,
+                    "operated_leg": patient.operated_leg.value, "age": patient.age},
+        "provenance": provenance,
+        "labels": labels,
+        "disclaimers": disclaimers,
+        "period": {"start": sm["start_date"], "end": (sessions[-1]["started_at"] if sessions else None),
+                   "first_session": sessions[0]["started_at"] if sessions else None,
+                   "days": sm["duration_days"], "programme_days": sm["programme_days"]},
+        "summary": sm,
+        "sessions": sessions,
+        "activity_distribution": sm["activity_seconds"],
+        "models": sm["models"],
+        "status_rule": mv["status_rule"],
+        "definitions": {
+            "mqi": ("Movement Quality Index (mqi-proto-v1): equal-weight mean of symmetry, temporal "
+                    "consistency, smoothness (SPARC), force consistency and repetition consistency. "
+                    "Research metric, not clinically validated."),
+            "asymmetry": ("Bilateral asymmetry score x 100: 0 = left and right move alike. From the "
+                          "two shank IMUs; segment tilt, not a joint angle."),
+            "activity": ("Activity model output (public-dataset trained). On synthetic or replayed "
+                         "signals it is a model result, not an observation."),
+        },
+        "validation": {"rehabsense_hardware": "NOT_VALIDATED", "clinical": "NOT_VALIDATED"},
+        "responsible_use": RESPONSIBLE_USE,
+    }
+    if include_clinical:
+        from sqlalchemy import select as _select
+
+        from app.db.models.session import Session as _Session
+
+        first_gen = db.execute(_select(_Session.generation).where(
+            _Session.patient_id == patient.id, _Session.generation.is_not(None)).limit(1)).scalar()
+        report["clinical"] = {
+            "notes": patient.notes,
+            "generation": None if not first_gen else {
+                k: first_gen.get(k) for k in ("generator", "synthetic_generator_version", "seed",
+                                              "source_dataset", "model_version", "pipeline_version",
+                                              "trajectory", "generation_timestamp")},
+        }
+    return report
+
+
+def ensure_movement_report(db: DbSession, patient, *, actor, idempotency_key: str):
+    """Create and generate a movement report once per key (used by the seed)."""
+    from sqlalchemy import select as _select
+
+    from app.db.models.audit import AuditAction
+    from app.db.models.report import Report, ReportKind, ReportStatus
+    from app.services import audit_service
+
+    report = db.execute(_select(Report).where(Report.idempotency_key == idempotency_key)).scalar_one_or_none()
+    if report is not None and report.status is ReportStatus.READY:
+        return report
+    if report is None:
+        report = Report(patient_id=patient.id, kind=ReportKind.MOVEMENT_PROGRESS,
+                        status=ReportStatus.DRAFT, idempotency_key=idempotency_key)
+        db.add(report)
+        db.flush()
+    generate_movement_report(db, report, patient, actor_id=actor.id if actor else None)
+    audit_service.record(db, action=AuditAction.REPORT_GENERATED, entity_type="report",
+                         entity_id=report.id, actor_id=actor.id if actor else None,
+                         patient_id=patient.id, kind=report.kind.value)
+    return report
+
+
+def generate_movement_report(db: DbSession, report, patient, *, actor_id: int | None) -> None:
+    from app.db.models.report import ReportStatus
+    from app.sensing.processor import PIPELINE_VERSION
+
+    report.payload_patient = build_movement_report(db, patient, include_clinical=False)
+    report.payload_clinician = build_movement_report(db, patient, include_clinical=True)
+    report.analytics_version = PIPELINE_VERSION
+    report.report_version = MOVEMENT_REPORT_VERSION
+    report.status = ReportStatus.READY
+    report.generated_at = datetime.now(timezone.utc)
+    report.generated_by = actor_id
+    db.flush()

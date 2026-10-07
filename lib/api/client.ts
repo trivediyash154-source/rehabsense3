@@ -129,6 +129,15 @@ export type ApiPatient = {
   surgery_date?: string | null;
   /** Present only for an assigned clinician; the server omits it otherwise. */
   notes?: string | null;
+  program?: string | null;
+  program_days?: number | null;
+  planned_sessions?: number | null;
+  recovery_start?: string | null;
+  /**
+   * Null for a real person's record. SYNTHETIC_DEMONSTRATION or
+   * PUBLIC_DATASET_REPLAY marks a generated / dataset record.
+   */
+  provenance?: string | null;
 };
 
 export type Contribution = {

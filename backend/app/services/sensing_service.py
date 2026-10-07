@@ -92,8 +92,9 @@ def resolve_provenance(db: DbSession, hello) -> tuple[str | None, str | None]:
             return None, "REGISTERED_DEVICE_DECLARED_SIMULATED"
         return PROVENANCE_VERIFIED, None
     if hello.simulated:
-        return (prov.PUBLIC_DATASET_REPLAY if hello.data_source == "PUBLIC_DATASET_REPLAY"
-                else prov.SIMULATED), None
+        return {"PUBLIC_DATASET_REPLAY": prov.PUBLIC_DATASET_REPLAY,
+                "SYNTHETIC_DEMONSTRATION": prov.SYNTHETIC_DEMONSTRATION,
+                }.get(hello.data_source or "", prov.SIMULATED), None
     if get_settings().require_registered_devices:
         return None, "DEVICE_NOT_REGISTERED"
     return PROVENANCE_UNVERIFIED, None
@@ -143,7 +144,7 @@ def register_v2_device(db: DbSession, session_id: int, hello, provenance: str) -
         device = Device(device_id=hello.device_id)
         db.add(device)
     device.kind = (DeviceKind.HARDWARE if provenance == prov.PHYSICAL_REGISTERED
-                   else DeviceKind.SIMULATOR if provenance in (prov.SIMULATED, prov.PUBLIC_DATASET_REPLAY)
+                   else DeviceKind.SIMULATOR if prov.is_non_physical(provenance)
                    else DeviceKind.UNVERIFIED)
     device.leg = None  # one device carries both sides
     device.firmware_version = hello.firmware_version
@@ -415,6 +416,24 @@ def persist_live_snapshot(db: DbSession, session_id: int, payload: dict) -> None
     else:
         row.payload = payload
         row.updated_at = now
+
+
+def persist_trace(db: DbSession, session_id: int, trace: dict) -> None:
+    """Keep the session's decimated movement trace (one row per session)."""
+    from app.db.models.sensing import SessionTrace
+
+    if not trace.get("rows"):
+        return
+    row = db.get(SessionTrace, session_id)
+    if row is None:
+        row = SessionTrace(session_id=session_id)
+        db.add(row)
+    row.rate_hz = trace["rate_hz"]
+    row.columns = trace["columns"]
+    row.units = trace.get("units")
+    row.rows = trace["rows"]
+    row.truncated = bool(trace.get("truncated"))
+    row.created_at = _now()
 
 
 def persist_rep(db: DbSession, session_id: int, payload: dict) -> None:

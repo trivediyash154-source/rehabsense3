@@ -6,7 +6,7 @@ import enum
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -24,6 +24,7 @@ class Leg(str, enum.Enum):
 
 class PatientProfile(Base, TimestampMixin):
     __tablename__ = "patients"
+    __table_args__ = (UniqueConstraint("demo_key", name="uq_patients_demo_key"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     # Optional: a patient record can exist before the person has a login.
@@ -38,6 +39,17 @@ class PatientProfile(Base, TimestampMixin):
     clinic_id: Mapped[str | None] = mapped_column(String(64), index=True)
     # Clinician-only. Never serialised into a patient-facing response.
     notes: Mapped[str | None] = mapped_column(Text)
+    # Rehabilitation programme, as a clinician would set it.
+    program: Mapped[str | None] = mapped_column(String(80))
+    program_days: Mapped[int | None] = mapped_column()
+    planned_sessions: Mapped[int | None] = mapped_column()
+    # Where this record came from. NULL: entered for a real person. Otherwise
+    # SYNTHETIC_DEMONSTRATION or PUBLIC_DATASET_REPLAY (app/sensing/provenance.py)
+    # -- a fictional or dataset record that must never be presented as a patient.
+    provenance: Mapped[str | None] = mapped_column(String(24), index=True)
+    # Stable key of a generated record ("synthetic-demo/v1/P01"), so the seed is
+    # idempotent and --reset-demo can only ever touch what it created.
+    demo_key: Mapped[str | None] = mapped_column(String(64))
 
     user: Mapped["User | None"] = relationship(
         back_populates="patient_profile", foreign_keys=[user_id]

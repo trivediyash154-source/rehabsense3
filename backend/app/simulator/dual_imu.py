@@ -65,6 +65,32 @@ class SideConfig:
     delay_s: float = 0.0         # extra timing lag
     present: bool = True
     noise_scale: float = 1.0
+    # Realism inputs for the synthetic demonstration cohort. Zero (the default)
+    # is the original, perfectly regular model, bit for bit.
+    variability: float = 0.0     # rep-to-rep spread of range and timing (~coefficient of variation)
+    tremor_deg: float = 0.0      # small 4-8 Hz oscillation on top of the movement (deg)
+
+
+class _SmoothNoise:
+    """Deterministic smooth random signal: a sum of slow sinusoids.
+
+    Closed form, so both the value and its time integral are exact at any t
+    (the simulator differentiates tilt numerically, so a discontinuity here
+    would become an impossible angular-velocity spike).
+    """
+
+    def __init__(self, rng: np.random.Generator, band_hz: tuple[float, float], n: int = 6):
+        self.f = rng.uniform(band_hz[0], band_hz[1], n)
+        self.p = rng.uniform(0.0, 2 * math.pi, n)
+        # Unit standard deviation: each sinusoid contributes a^2 / 2.
+        self.a = np.full(n, math.sqrt(2.0 / n))
+
+    def value(self, t: float) -> float:
+        return float(np.sum(self.a * np.sin(2 * math.pi * self.f * t + self.p)))
+
+    def integral(self, t: float) -> float:
+        w = 2 * math.pi * self.f
+        return float(np.sum(self.a * (np.cos(self.p) - np.cos(w * t + self.p)) / w))
 
 
 @dataclass
@@ -86,6 +112,12 @@ class DualImuModel:
         self.acc_bias = {s: self.rng.normal(0, 0.02, 3) for s in ("LEFT", "RIGHT")}
         self.gyro_bias = {s: self.rng.normal(0, 2.5, 3) for s in ("LEFT", "RIGHT")}
         self.force_gain = {s: 1.0 + self.rng.normal(0, 0.08) for s in ("LEFT", "RIGHT", None)}
+        # Realism generators draw from their own stream so the noise above is
+        # unchanged whether or not they are used.
+        vrng = np.random.default_rng([self.seed, 0x5EED])
+        self._timing = _SmoothNoise(vrng, (0.06, 0.35))
+        self._amp_noise = {s: _SmoothNoise(vrng, (0.08, 0.45)) for s in ("LEFT", "RIGHT")}
+        self._tremor_p = {s: vrng.uniform(0.0, 2 * math.pi, 3) for s in ("LEFT", "RIGHT")}
 
     # ------------------------------------------------------------------ #
 
@@ -118,6 +150,28 @@ class DualImuModel:
         del own, other
         return 1.0 if tc >= left_len else 0.0
 
+    def _warped(self, tt: float) -> float:
+        """Movement time with rep-to-rep timing variability (shared by both
+        sides: one person sets one rhythm). Identity when variability is 0."""
+        v = 0.8 * max(self.left.variability, self.right.variability)
+        if v <= 0.0:
+            return tt
+        # d(warped)/dt = 1 + v*g(t) stays >= 0.4 because v <= 0.3 and |g| <= 2.
+        return tt + min(v, 0.3) * self._timing.integral(tt)
+
+    def _amp_scale(self, side: str, t: float, cfg: SideConfig) -> float:
+        if cfg.variability <= 0.0:
+            return 1.0
+        return max(0.4, 1.0 + cfg.variability * self._amp_noise[side].value(t))
+
+    def _tremor(self, side: str, t: float, cfg: SideConfig) -> float:
+        if cfg.tremor_deg <= 0.0:
+            return 0.0
+        p = self._tremor_p[side]
+        return cfg.tremor_deg * (math.sin(2 * math.pi * 5.6 * t + p[0])
+                                 + 0.5 * math.sin(2 * math.pi * 7.4 * t + p[1])
+                                 + 0.35 * math.sin(2 * math.pi * 4.1 * t + p[2])) / 1.25
+
     def tilt(self, side: str, t: float) -> float:
         """Ground-truth segment tilt (deg) at movement time t (t < 0: still)."""
         if t < 0:
@@ -133,21 +187,27 @@ class DualImuModel:
         # step in tilt would imply infinite angular velocity.
         ramp = min(1.0, tt / 1.0)
         ramp = ramp * ramp * (3 - 2 * ramp)
+        amp *= self._amp_scale(side, tt, cfg)
         if p["pattern"] == "alternate":
-            phase = 2 * math.pi * tt / period + (0.0 if side == "LEFT" else math.pi)
-            return ramp * amp * (0.55 * math.sin(phase) + 0.25 * math.sin(2 * phase - 0.6))
+            phase = 2 * math.pi * self._warped(tt) / period + (0.0 if side == "LEFT" else math.pi)
+            return ramp * (amp * (0.55 * math.sin(phase) + 0.25 * math.sin(2 * phase - 0.6))
+                           + self._tremor(side, tt, cfg))
         if p["pattern"] == "sway":
             return ramp * (amp * math.sin(2 * math.pi * tt / period)
                            + 0.5 * amp * math.sin(2 * math.pi * tt / 1.3))
         active = self._active(side, tt, period)
+        tremor = active * ramp * self._tremor(side, tt, cfg)
         if p["pattern"] == "unilateral":
             # Phase restarts at the beginning of each of this side's sets.
+            # Set timing stays fixed; only the range varies rep to rep.
             cycle = 4 * (self._period("LEFT") + self._period("RIGHT"))
             tc = tt % cycle
             tt = tc if side == "LEFT" else tc - 4 * self._period("LEFT")
+        else:
+            tt = self._warped(tt)
         phase = 2 * math.pi * tt / period
         wobble = 1.0 + 0.05 * math.sin(0.37 * phase)
-        return active * amp * wobble * math.sin(phase / 2.0) ** 2
+        return active * amp * wobble * math.sin(phase / 2.0) ** 2 + tremor
 
     def _imu(self, side: str, t: float, dt: float, speed: float = 1.0) -> np.ndarray:
         # Derivatives are taken in *device* time: during the slowed-down

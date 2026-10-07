@@ -50,6 +50,9 @@ class AuditAction(str, enum.Enum):
     OAUTH_LOGIN = "OAUTH_LOGIN"
     OAUTH_LOGIN_REFUSED = "OAUTH_LOGIN_REFUSED"
     USER_DELETED = "USER_DELETED"
+    # The synthetic demonstration cohort (scripts/seed_demo_data.py).
+    DEMO_DATA_SEEDED = "DEMO_DATA_SEEDED"
+    DEMO_DATA_RESET = "DEMO_DATA_RESET"
 
 
 class AuditLog(Base, TimestampMixin):

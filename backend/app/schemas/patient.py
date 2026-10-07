@@ -39,6 +39,13 @@ class PatientPublic(BaseModel):
     operated_leg: Leg
     surgery_date: date | None = None
     created_at: UtcDatetime
+    recovery_start: date | None = None
+    program: str | None = None
+    program_days: int | None = None
+    planned_sessions: int | None = None
+    # NULL for a real person's record; SYNTHETIC_DEMONSTRATION or
+    # PUBLIC_DATASET_REPLAY for generated / dataset records.
+    provenance: str | None = None
 
 
 class PatientClinical(PatientPublic):

@@ -410,3 +410,25 @@ class LiveSnapshot(Base):
         ForeignKey("sessions.id", ondelete="CASCADE"), primary_key=True)
     payload: Mapped[dict] = mapped_column(JSON, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class SessionTrace(Base):
+    """A decimated movement trace of one hardware-v2 session, for replay.
+
+    The same per-side frames the live dashboard receives (calibrated |a|,
+    bias-corrected |w|, segment tilt from neutral, force), kept at a reduced
+    rate when the session ends. Derived from the pipeline's own frames, so a
+    replay shows what the pipeline computed -- and it outlives the raw-sample
+    retention window.
+    """
+
+    __tablename__ = "session_traces"
+
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("sessions.id", ondelete="CASCADE"), primary_key=True)
+    rate_hz: Mapped[float] = mapped_column(Float, nullable=False)
+    columns: Mapped[list] = mapped_column(JSON, nullable=False)
+    units: Mapped[dict | None] = mapped_column(JSON)
+    rows: Mapped[list] = mapped_column(JSON, nullable=False)
+    truncated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

@@ -28,7 +28,7 @@ Values are limited to PASS, FAIL, NOT CONFIGURED and NOT TESTED.
 | Email signup | PASS | PASS | PASS |
 | Email login | PASS | PASS | PASS |
 | Email logout | PASS | PASS | PASS |
-| Google OAuth | PASS | NOT TESTED | NOT TESTED |
+| Google OAuth | PASS | PASS | PASS |
 | Google returning login | PASS | NOT TESTED | NOT TESTED |
 | Facebook OAuth | PASS | NOT TESTED | NOT CONFIGURED |
 | Facebook returning login | PASS | NOT TESTED | NOT CONFIGURED |
@@ -46,8 +46,14 @@ client "RehabSense web", whose only redirect URI is
 - **API status:** `/api/auth/providers` reports `google: enabled`.
 - **Live check:** on the live site, "Continue with Google" opens Google's real account
   chooser for this client with no configuration error.
-- **Still to do:** a full sign-in by a person choosing their Google account. Until then
-  the live result is NOT TESTED.
+- **Live sign-in (PASS):** on 2026-10-07 the owner signed in twice through Google's real
+  account chooser. The production database shows both accounts:
+  - **14:36:27 UTC:** a patient account. A `user_identities` row (provider `google`,
+    `provider_email_verified` true) and a `USER_REGISTERED` audit entry with method `google`.
+    It signed out 13 s later (`USER_LOGOUT`).
+  - **14:37:20 UTC:** a clinician account, with the same records.
+- **Returning login (NOT TESTED):** no account has yet signed in a second time with an existing
+  Google identity. There is no `OAUTH_LOGIN` audit entry.
 
 **Facebook is NOT CONFIGURED:** the owner chose to skip it. A Meta developer account
 registration was started but not finished.
@@ -106,22 +112,23 @@ each step queried in the production database. **29/29 PASS** on the final deploy
 | Repository secret scan (Neon, Google, AWS, Vercel and GitHub key patterns, private keys) | none found; only `.env.example` files tracked |
 | Anonymous device streams (found and fixed in this audit) | Protocol v1 ingest (`/ws/ingest/{id}`) used to accept any client. Now: an anonymous v1 stream gets `DEVICE_UNAUTHORIZED`, and an anonymous "simulated" v2 stream gets `DEVICE_UNAUTHORIZED` with no key or a wrong key. Production sets `DEVICE_INGEST_KEY` (secret); registered boards use their own keys; unregistered physical devices are refused (`DEVICE_NOT_REGISTERED`). |
 
-## To make Google and Facebook live
+## What is still open
 
-Only the account owner can create the provider apps; nothing else is outstanding. Once
-the four values exist (Google client ID and secret, Facebook app ID and secret), they are
-stored as Sensitive Vercel variables, the API is redeployed, and Google and Facebook
-sign-in are tested live: new user, returning user, cancel, logout and the same-email
-account case. See [GOOGLE_OAUTH_SETUP.md](GOOGLE_OAUTH_SETUP.md) and
-[FACEBOOK_OAUTH_SETUP.md](FACEBOOK_OAUTH_SETUP.md).
+- **Google:** nothing to configure. Signing in again with an existing Google account will
+  exercise the returning-login path (an `OAUTH_LOGIN` audit entry).
+- **Facebook:** only the account owner can create the Meta app. Once its app ID and secret
+  exist, they are stored as Sensitive Vercel variables, the API is redeployed, and Facebook
+  sign-in is tested live: new user, returning user, cancel, logout and the same-email
+  account case. See [FACEBOOK_OAUTH_SETUP.md](FACEBOOK_OAUTH_SETUP.md).
 
 ## Verdict
 
-**PRODUCTION PARTIALLY WORKING.** Google sign-in is configured and reaches Google's
-account chooser; a first real sign-in is still to be performed. Facebook is not
-configured.
+**PRODUCTION PARTIALLY WORKING.** Google sign-in works live: two accounts were created
+through Google's real chooser. A returning Google sign-in has not been exercised yet.
+Facebook is not configured.
 
 - **Working live, end to end:** email/password, sessions, records, isolation, devices,
   the simulator, ML and the database.
-- **Not configured:** Google and Facebook, until their credentials exist.
+- **Working live:** Google sign-in for a new account.
+- **Not configured:** Facebook, until its credentials exist.
 - **Not configured:** phone OTP, by design.

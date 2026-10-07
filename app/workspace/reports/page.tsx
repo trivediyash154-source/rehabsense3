@@ -8,8 +8,37 @@ import { ComparisonReceipt } from "@/components/dashboard/ComparisonReceipt";
 import { exerciseLabels } from "@/lib/demo-data";
 import { useData } from "@/lib/api/DataProvider";
 import { downloadFile } from "@/lib/api/download";
+import { ReportsPanel } from "@/components/movement/ReportsPanel";
+import { ResearchNote } from "@/components/movement/Provenance";
 
 export default function ReportsPage() {
+  const { hasMovement } = useData();
+  return hasMovement ? <MovementReports /> : <KneeAngleReports />;
+}
+
+/** Hardware-v2 records: stored movement progress reports and their PDFs. */
+function MovementReports() {
+  const { patient, synthetic } = useData();
+  return (
+    <>
+      <WorkspaceHeader
+        eyebrow="REPORTS"
+        title="Presentation-ready, and honest about the data."
+        lede="Movement progress reports are frozen from stored sessions and rendered as PDF on request. Every page states the data provenance and that RehabSense is a research prototype, not a medical device."
+        stats={[
+          { label: "RECORD", value: patient?.name ?? "—" },
+          { label: "FORMAT", value: "PDF", tone: "violet" },
+          { label: "SOURCE", value: synthetic ? "Synthetic demo" : "Recorded", tone: synthetic ? "violet" : "teal" },
+        ]}
+      />
+      <ResearchNote synthetic={synthetic} />
+      {patient && <ReportsPanel patientId={patient.id} patientName={patient.name} />}
+      <ReportsPanel />
+    </>
+  );
+}
+
+function KneeAngleReports() {
   const { sessions, mode, patient } = useData();
   const { session, setSession } = useWorkspace();
   const [receipt, setReceipt] = useState(false);

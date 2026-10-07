@@ -20,13 +20,19 @@ const ALWAYS_AVAILABLE = [
   // Focus is where a first target gets set, so it must work on a brand-new
   // account with no history at all.
   "/workspace/focus",
+  // These load their own data (any record the account may see) and show
+  // their own empty and error states.
+  "/workspace/patients",
+  "/workspace/research",
+  "/workspace/sessions/",
 ];
 
 export function WorkspaceGate({ children }: { children: React.ReactNode }) {
-  const { mode, sessions } = useData();
+  const { mode, sessions, hasMovement } = useData();
   const pathname = usePathname();
 
-  const hasData = (mode === "live" || mode === "illustrative") && sessions.length > 0;
+  // Knee-angle (v1) sessions, or hardware-v2 movement sessions.
+  const hasData = ((mode === "live" || mode === "illustrative") && sessions.length > 0) || hasMovement;
   if (hasData) return <>{children}</>;
 
   // These routes are still useful with no history, but only once we know the

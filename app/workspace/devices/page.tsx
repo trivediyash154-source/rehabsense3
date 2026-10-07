@@ -3,9 +3,12 @@
 import { WorkspaceHeader, useWorkspace } from "@/components/workspace/WorkspaceShell";
 import { DeviceExplorer } from "@/components/workspace/DeviceExplorer";
 import { SensorConstellation } from "@/components/workspace/SensorConstellation";
+import { DeviceProvenanceView } from "@/components/movement/DeviceProvenanceView";
+import { useData } from "@/lib/api/DataProvider";
 
 export default function DevicesPage() {
   const { session } = useWorkspace();
+  const { sessions, authenticated } = useData();
   return (
     <>
       <WorkspaceHeader
@@ -18,6 +21,7 @@ export default function DevicesPage() {
           { label: "HARDWARE", value: "Conceptual", tone: "amber" },
         ]}
       />
+      {authenticated && <DeviceProvenanceView />}
       <DeviceExplorer />
 
       <section className="dv-future">
@@ -34,7 +38,8 @@ export default function DevicesPage() {
         </p>
       </section>
 
-      <SensorConstellation session={session} />
+      {/* Drawn from a recorded knee-angle session; never from a placeholder. */}
+      {sessions.length > 0 && <SensorConstellation session={session} />}
     </>
   );
 }

@@ -5,8 +5,20 @@ import { CommandCenter } from "@/components/workspace/CommandCenter";
 import { useData } from "@/lib/api/DataProvider";
 import { useRoster } from "@/lib/api/useRoster";
 import { patients as demoRoster } from "@/lib/demo-data";
+import { movementApi, useApi } from "@/lib/api/movement";
+import { MovementRoster } from "@/components/movement/MovementRoster";
+import { Loading } from "@/components/movement/Bits";
 
 export default function PatientsPage() {
+  const { authenticated, mode } = useData();
+  const illustrative = mode === "illustrative";
+  const roster = useApi(movementApi.roster, [], authenticated && !illustrative);
+  const v2 = roster.data && (roster.data.items.some((p) => p.sessions_completed > 0) || roster.data.references.length > 0);
+  if (roster.loading && !roster.data) return <Loading what="records" />;
+  return v2 && roster.data ? <MovementRoster roster={roster.data} /> : <KneeAngleRoster />;
+}
+
+function KneeAngleRoster() {
   const { authenticated, mode } = useData();
   // The demo roster only in illustrative mode (entered deliberately); a real
   // account with no records shows zero, not invented patients.

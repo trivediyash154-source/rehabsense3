@@ -10,8 +10,16 @@ import { BilateralMirror } from "@/components/dashboard/BilateralMirror";
 import { whatChanged } from "@/lib/demo-data";
 import { useData } from "@/lib/api/DataProvider";
 import { NO_VALUE, allPresent } from "@/lib/format";
+import { PatientMovementView } from "@/components/movement/PatientMovementView";
 
 export default function ProgressPage() {
+  const { hasMovement, patient } = useData();
+  // Hardware-v2 records: movement quality, asymmetry and activity over time.
+  if (hasMovement && patient) return <PatientMovementView patientId={patient.id} variant="progress" />;
+  return <KneeAngleProgress />;
+}
+
+function KneeAngleProgress() {
   const { sessions } = useData();
   const baseline = sessions[0];
   const { session, setSession } = useWorkspace();

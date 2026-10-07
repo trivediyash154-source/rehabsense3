@@ -1,9 +1,13 @@
 "use client";
 
-import { WorkspaceHeader } from "@/components/workspace/WorkspaceShell";
+import { WorkspaceHeader, useWorkspace } from "@/components/workspace/WorkspaceShell";
 import { HardwareLab } from "@/components/hardware/HardwareLab";
+import { SyntheticPipelinePanel } from "@/components/movement/SyntheticPipelinePanel";
+import { useData } from "@/lib/api/DataProvider";
 
 export default function HardwarePage() {
+  const { authenticated } = useData();
+  const { role } = useWorkspace();
   return (
     <>
       <WorkspaceHeader
@@ -16,6 +20,7 @@ export default function HardwarePage() {
           { label: "VALIDATION", value: "Not validated", tone: "amber" },
         ]}
       />
+      {authenticated && role === "physio" && <SyntheticPipelinePanel />}
       <HardwareLab />
     </>
   );

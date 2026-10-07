@@ -22,6 +22,9 @@ class ReportKind(str, enum.Enum):
     PROGRESS_COMPARISON = "PROGRESS_COMPARISON"
     PATIENT_SUMMARY = "PATIENT_SUMMARY"
     CLINICIAN_REPORT = "CLINICIAN_REPORT"
+    # Hardware-v2 longitudinal report: movement quality, asymmetry, activity,
+    # provenance (app/services/movement_analytics.py). Exportable as PDF.
+    MOVEMENT_PROGRESS = "MOVEMENT_PROGRESS"
 
 
 class ReportStatus(str, enum.Enum):

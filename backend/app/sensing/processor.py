@@ -60,6 +60,9 @@ from app.sensing.windowing import PREPROCESSING_VERSION, SlidingWindowBuffer, re
 from app.sensing.recording import MARKER_KINDS as _KINDS  # noqa: E402
 
 PIPELINE_VERSION = "hw-v2.0"
+# Replay trace kept per session: 10 frames/s, at most 30 minutes.
+TRACE_HZ = 10.0
+TRACE_MAX_ROWS = 18000
 # Raw chunk layout: zlib( t float64[n] | seq int64[n] | values float32[n, C] ).
 RAW_ENCODING = "rs-raw-v2"
 ANALYSIS_SECONDS = 30.0
@@ -148,6 +151,10 @@ class DualSessionProcessor:
         self._last_assessment = -1.0
         self._cal_bucket = -1
         self._frame_rows: list = []
+        # Decimated copy of the same frames, kept for replay after the session.
+        self.trace_rows: list = []
+        self.trace_truncated = False
+        self._last_trace_t = -1.0
         self.windows: list[dict] = []
         self.activity_seconds: dict[str, float] = {}
         self.low_conf_windows = 0
@@ -564,19 +571,39 @@ class DualSessionProcessor:
             frame += [None if np.isnan(row[12 + j]) else round(float(row[12 + j]), 4)
                       for j in range(self.layout.n_force)]
             self._frame_rows.append(frame)
+            self._keep_trace(frame)
         if self.clock - self._last_frame_emit < 0.2:
             return []
         self._last_frame_emit = self.clock
         rows, self._frame_rows = self._frame_rows, []
         return [Event("hw_sensor_frame", {
-            "columns": ["t", "left_acc_g", "left_gyro_dps", "left_tilt_deg",
-                        "right_acc_g", "right_gyro_dps", "right_tilt_deg"]
-                       + self.layout.names[12:],
+            "columns": self.frame_columns(),
             "rows": rows,
-            "units": {"acc": "g (|a|, calibrated)", "gyro": "deg/s (|w|, bias-corrected)",
-                      "tilt": "deg from neutral (segment tilt, not a joint angle)",
-                      "force": list(self.layout.force_units)},
+            "units": self.frame_units(),
         })]
+
+    def frame_columns(self) -> list[str]:
+        return (["t", "left_acc_g", "left_gyro_dps", "left_tilt_deg",
+                 "right_acc_g", "right_gyro_dps", "right_tilt_deg"] + self.layout.names[12:])
+
+    def frame_units(self) -> dict:
+        return {"acc": "g (|a|, calibrated)", "gyro": "deg/s (|w|, bias-corrected)",
+                "tilt": "deg from neutral (segment tilt, not a joint angle)",
+                "force": list(self.layout.force_units)}
+
+    def _keep_trace(self, frame: list) -> None:
+        if frame[0] - self._last_trace_t < 1.0 / TRACE_HZ - 1e-9:
+            return
+        if len(self.trace_rows) >= TRACE_MAX_ROWS:
+            self.trace_truncated = True
+            return
+        self._last_trace_t = frame[0]
+        self.trace_rows.append(frame)
+
+    def trace(self) -> dict:
+        """The decimated per-side trace of this session (see SessionTrace)."""
+        return {"rate_hz": TRACE_HZ, "columns": self.frame_columns(), "units": self.frame_units(),
+                "rows": self.trace_rows, "truncated": self.trace_truncated}
 
     def _analysis_arrays(self, seconds: float):
         if not self._buf_t:

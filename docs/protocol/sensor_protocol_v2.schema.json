@@ -355,7 +355,8 @@
             {
               "enum": [
                 "SIMULATOR",
-                "PUBLIC_DATASET_REPLAY"
+                "PUBLIC_DATASET_REPLAY",
+                "SYNTHETIC_DEMONSTRATION"
               ],
               "type": "string"
             },

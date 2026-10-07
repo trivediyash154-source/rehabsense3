@@ -32,6 +32,11 @@ export type ApiSessionBrief = {
   peak_angle_left_deg: number | null;
   peak_angle_right_deg: number | null;
   mode: string;
+  /** Hardware v2 (dual IMU): different indicators, knee-angle fields null. */
+  protocol_version?: number | null;
+  provenance?: string | null;
+  mqi?: number | null;
+  asymmetry_pct?: number | null;
 };
 
 export type ApiProgress = {
@@ -113,6 +118,11 @@ export function hasAnalytics(brief: ApiSessionBrief): boolean {
   return brief.rom_deg != null && brief.repetitions != null && brief.repetitions > 0;
 }
 
+/** A hardware-v2 session with movement indicators (shown by the v2 views). */
+export function hasMovementAnalytics(brief: ApiSessionBrief): boolean {
+  return brief.protocol_version === 2 && (brief.mqi != null || brief.asymmetry_pct != null);
+}
+
 function note(brief: ApiSessionBrief, index: number, total: number): string {
   const parts: string[] = [];
   if (index === 0) parts.push("Baseline session.");
@@ -136,7 +146,8 @@ export function adaptSessions(briefs: ApiSessionBrief[]): {
   skipped: ApiSessionBrief[];
 } {
   const usable = briefs.filter(hasAnalytics);
-  const skipped = briefs.filter((b) => !hasAnalytics(b));
+  // v2 sessions are analysed by the movement views, not "without signal".
+  const skipped = briefs.filter((b) => !hasAnalytics(b) && !hasMovementAnalytics(b));
   const first = parseUtc(usable[0]?.started_at ?? null);
 
   // When several sessions land on the same calendar day, "Day 1" repeated is

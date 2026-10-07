@@ -124,7 +124,7 @@ class HelloV2(BaseModel):
     simulated: bool = False
     scenario: str | None = Field(default=None, max_length=40)
     # Only meaningful with simulated=true: what kind of non-physical source.
-    data_source: Literal["SIMULATOR", "PUBLIC_DATASET_REPLAY"] | None = None
+    data_source: Literal["SIMULATOR", "PUBLIC_DATASET_REPLAY", "SYNTHETIC_DEMONSTRATION"] | None = None
 
     @field_validator("protocol_version")
     @classmethod
