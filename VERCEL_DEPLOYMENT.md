@@ -32,17 +32,29 @@ old project held only test accounts and Neon deletes it automatically.
 ## Free-plan behaviour (stated plainly)
 
 - Every request and WebSocket lasts at most 300 s; dashboards and the ESP32
-  firmware reconnect automatically.
+  firmware reconnect automatically. A dashboard keeps retrying when the reconnect
+  lands on an instance that is still starting; only 401/403/404 stop it. Verified
+  live: a socket was cut and the first new ticket failed with 503, the dashboard
+  retried and resumed.
 - The API scales to zero after 5 minutes without traffic; the next request
   waits a few seconds while it starts (the website re-checks the session
   instead of showing a signed-in user as signed out).
 - Several API instances may run at once. Live dashboard messages cross
   instances through PostgreSQL LISTEN/NOTIFY (`LIVE_RELAY=postgres`); session
   summaries are rebuilt from stored rows when the ending request reaches
-  another instance. Commands such as "Recalibrate" act only if they reach the
+  another instance; the Hardware Lab's validation panel is answered from a
+  snapshot (`live_snapshots`) that the receiving instance writes every 4 s. Commands such as "Recalibrate" act only if they reach the
   instance holding the device's stream.
 - The container disk is temporary (`/tmp`): stored export files do not
   survive a restart; database data does.
+- **Long live sessions.**
+  - Work that runs in the background with no open request, such as the in-process
+    simulator, can be suspended by the host. A live 6-minute simulated run stopped
+    after 3.6 min; 90 s runs (the UI default) complete.
+  - A real device's own socket keeps its instance active, but it is cut every 300 s.
+    After the firmware reconnects, processing may resume on another instance, which
+    needs a fresh calibration.
+  - Untested on a physical board. See [PERFORMANCE_AUDIT.md](PERFORMANCE_AUDIT.md).
 - Hobby usage limits apply; when exceeded, Vercel pauses functions until the
   next cycle. Nothing is ever charged.
 

@@ -254,8 +254,14 @@ of the Vercel upload.
 ## Known limitations
 
 - No physical hardware validation yet; no clinical validation.
-- The Python API must run as a single process (WebSocket sessions and the
-  live processors are held in memory); see docs/DEPLOYMENT_AUDIT.md.
+- Live processors are held in the memory of the API instance receiving a
+  device's stream. The free Vercel deployment runs several instances: dashboards
+  get live messages through a PostgreSQL relay and validation from a snapshot.
+  Every WebSocket is cut at 300 s, and long sessions may resume on another
+  instance with a fresh calibration (VERCEL_DEPLOYMENT.md). A host with
+  long-lived connections removes this limit.
+- Google and Facebook sign-in need provider credentials before they appear as
+  available.
 - Demo dashboard values are invented and labelled as such throughout.
 - The rate limiter is per-process; use a shared limiter in production.
 - A named data controller, retention periods and user-rights processes must be

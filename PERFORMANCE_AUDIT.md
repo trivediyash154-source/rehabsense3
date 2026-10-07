@@ -76,7 +76,36 @@ opening the page until the sign-in form has confirmed the API.
 
 | Scenario | Result |
 |---|---|
-| A′. Straight to `/login` on a cold API, with the edge warm-up | _measuring_ |
+| A′. Straight to `/login` on a cold API, with the edge warm-up | **8.65 s** (was 11.3 s), with the waking message and no error. One run each, so treat the 2.7 s gain as indicative. |
+
+## Live sessions on a multi-instance host (found by live tests)
+
+Vercel runs several API instances and cuts every WebSocket at 300 s. Two defects
+appeared only under those conditions:
+
+| Defect | Measured before | Fix | Measured after |
+|---|---|---|---|
+| Hardware Lab validation panel stopped updating | **70 of 72** polls answered 404 in a 5-minute live session; only the instance holding the stream knew the answer | The receiving instance writes its validation inputs to `live_snapshots` every 4 s, and any instance answers from it, stating its age (migration `ec7fd4532599`) | **15 of 17** polls 200; the 2 misses were in the first seconds, before the first snapshot |
+| Live dashboard died at the 300 s cut | Vercel cut the stream at exactly 300 s (2,303 frames received), and the close reached the browser about 10 s later. The single reconnect attempt then failed, and no socket was opened again. | A failed ticket request is retried with backoff; only 401/403/404 stop the retries (both live hooks) | Socket cut, then a deliberately failed first ticket (503): the dashboard retried and resumed (socket #2, frames flowing). The real 300 s cut is re-tested below. |
+
+| Live test | Result |
+|---|---|
+| Real 300 s cut, dashboard open across it (retry fix deployed) | **Reconnected 1.6 s after the close** (socket #1: 1,609 frames, cut at 300 s; socket #2 opened on a new instance). |
+| Stream continuity in that same 6-minute simulated run | **Limited.** The in-process simulator's raw samples and ML results stop at **t = 216.8 s** (3.6 min), before the cut. The simulator runs as background work on an instance with no open request of its own, and the host may suspend or recycle such an instance at any time. Short runs (the UI default is 90 s) completed in every live test. |
+
+**Limits of this free host for live sessions** (documented, not hidden):
+
+- **The in-process simulator** (a development and demo tool) can stop early on long runs.
+- **A real ESP32** keeps its instance active through its own ingest socket, but that
+  socket is also cut every 300 s. The firmware reconnects, and the new connection may
+  land on another instance, which starts processing afresh: the device must recalibrate
+  and repetition counting restarts.
+- **Not tested on a physical board.**
+- **The proper fix** for long continuous sessions is a host with long-lived
+  connections, which free no-card options did not offer. The next best is to restore
+  the stored calibration when a session's stream moves to a new instance.
+
+
 
 ## Checked and not found
 
