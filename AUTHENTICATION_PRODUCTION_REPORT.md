@@ -8,8 +8,10 @@
 **Infrastructure:** both run in Vercel region `sin1`, with PostgreSQL 17 on Neon
 (`ancient-queen-09719759`, AWS ap-southeast-1, in the owner's account).
 
-**Code:** commit `9e4cb6d` (`main`). Every deployment records its commit SHA (see
-[VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md)).
+**Code:** production deployments `dpl_8X5cUeALs6h4R7Hj5gN9zsHgEnSd` (website) and
+`dpl_3tTB4iZaybHe8sXuDpHDtaHFhFoK` (API), both built from commit `3941346` on `main`.
+Each records its commit SHA. Later commits change documentation only, which is not
+part of either deployment.
 
 ## Result table
 
@@ -47,7 +49,8 @@ says so and has no code inputs (check 17, live).
 ## Live browser test: email, sessions, records, isolation
 
 Script `prod_e2e.js`, real Chromium on <https://rehabsense-platform.vercel.app>, with
-each step queried in the production database. **29/29 PASS.**
+each step queried in the production database. **29/29 PASS** on the final deployment
+(`3941346`) and on each earlier build tested.
 
 | # | Check | Result |
 |---|---|---|
@@ -86,6 +89,7 @@ each step queried in the production database. **29/29 PASS.**
 | `/docs`, `/redoc`, `/openapi.json` | 404 (interactive API docs are off in production) |
 | Website headers | HSTS (2 years, preload), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy` |
 | Repository secret scan (Neon, Google, AWS, Vercel and GitHub key patterns, private keys) | none found; only `.env.example` files tracked |
+| Anonymous device streams (found and fixed in this audit) | Protocol v1 ingest (`/ws/ingest/{id}`) used to accept any client. Now: an anonymous v1 stream gets `DEVICE_UNAUTHORIZED`, and an anonymous "simulated" v2 stream gets `DEVICE_UNAUTHORIZED` with no key or a wrong key. Production sets `DEVICE_INGEST_KEY` (secret); registered boards use their own keys; unregistered physical devices are refused (`DEVICE_NOT_REGISTERED`). |
 
 ## To make Google and Facebook live
 

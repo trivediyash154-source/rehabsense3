@@ -65,6 +65,8 @@ Website (`rehabsense-platform`): `BACKEND_ORIGIN=https://rehabsense-api.vercel.a
 `NEXT_PUBLIC_SITE_URL=https://rehabsense-platform.vercel.app`.
 
 API (`rehabsense-api`): `DATABASE_URL` (sensitive), `SECRET_KEY` (sensitive),
+`DEVICE_INGEST_KEY` (sensitive; the fleet key that unregistered and simulated
+streams must present, so nobody can stream into a session anonymously),
 `ENVIRONMENT=production`, `DEBUG=false`, `CORS_ORIGINS=https://rehabsense-platform.vercel.app`,
 `COOKIE_SECURE=true`, `STORAGE_BACKEND=local`, `STORAGE_LOCAL_DIR=/tmp/rehabsense-storage`,
 `ALLOW_SIMULATED_DEVICES=true`, `LIVE_RELAY=postgres`, `PORT=8000`,
