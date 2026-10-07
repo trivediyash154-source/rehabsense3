@@ -239,6 +239,9 @@ def test_report_pdf_carries_the_mandatory_disclaimers(seeded):
     assert "SYNTHETIC DEMONSTRATION DATA — NOT CLINICAL EVIDENCE".encode("cp1252") in text
     assert b"RehabSense is a research prototype and not a medical device." in text
     assert text.count(b"RehabSense is a research prototype and not a medical device.") >= 2  # every page
+    # Non-ASCII metadata (the title's em dash) is a UTF-16BE text string.
+    title = re.search(rb"/Title <FEFF([0-9A-F]+)>", r.content)
+    assert title and bytes.fromhex(title.group(1).decode()).decode("utf-16-be").startswith("Movement progress report — ")
 
 
 def test_report_generation_through_the_api(seeded):

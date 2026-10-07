@@ -20,7 +20,8 @@ const RIGHT = 8;
 function rowAt(rows: (number | null)[][], time: number): number {
   let lo = 0;
   let hi = rows.length - 1;
-  if (hi < 0) return -1;
+  // Before the first stored frame (the calibration seconds) there is nothing to show.
+  if (hi < 0 || time < (rows[0][0] ?? 0)) return -1;
   while (lo < hi) {
     const mid = (lo + hi + 1) >> 1;
     if ((rows[mid][0] ?? 0) <= time) lo = mid;

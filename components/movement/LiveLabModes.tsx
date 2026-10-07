@@ -98,7 +98,8 @@ function SyntheticReplay({ initial }: { initial: number | null }) {
 function rowAt(rows: (number | null)[][], time: number): number {
   let lo = 0;
   let hi = rows.length - 1;
-  if (hi < 0) return -1;
+  // Before the first stored frame (the calibration seconds) there is nothing to show.
+  if (hi < 0 || time < (rows[0][0] ?? 0)) return -1;
   while (lo < hi) {
     const mid = (lo + hi + 1) >> 1;
     if ((rows[mid][0] ?? 0) <= time) lo = mid;
@@ -155,7 +156,8 @@ function Stage({ a, trace }: { a: SessionAnalysis; trace: SessionTrace }) {
   const now = i >= 0 ? rows[i] : null;
   const v = (name: string) => (now && col[name] != null ? (now[col[name]] as number | null) : null);
   const recent = useMemo(() => {
-    const from = rowAt(rows, Math.max(0, t - 10));
+    if (i < 0) return [];
+    const from = Math.max(0, rowAt(rows, Math.max(0, t - 10)));
     return rows.slice(from, i + 1).map((r) => ({ t: Number(r[0]), l: r[col.left_tilt_deg] as number | null, r: r[col.right_tilt_deg] as number | null }));
   }, [rows, t, i, col]);
   const activity = a.activity_segments.find((g) => g.t_start <= t && t <= g.t_end) ?? null;

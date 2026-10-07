@@ -74,6 +74,19 @@ def _escape(text: str) -> bytes:
     return raw.replace(b"\\", b"\\\\").replace(b"(", b"\\(").replace(b")", b"\\)")
 
 
+def _text_string(text: str) -> bytes:
+    """A PDF text string for document metadata (Title, Author).
+
+    Content streams use WinAnsi through the font encoding, but metadata
+    strings are PDFDocEncoding or UTF-16BE with a byte-order mark; plain ASCII
+    is written as a literal, anything else as UTF-16BE so viewers show it
+    correctly (an em dash would otherwise appear as a different character).
+    """
+    if all(32 <= ord(ch) < 127 for ch in text):
+        return b"(" + text.encode("ascii").replace(b"\\", b"\\\\").replace(b"(", b"\\(").replace(b")", b"\\)") + b")"
+    return b"<FEFF" + text.encode("utf-16-be").hex().upper().encode() + b">"
+
+
 def _rgb(color) -> str:
     if isinstance(color, str):
         color = color.lstrip("#")
@@ -205,8 +218,8 @@ class PdfDocument:
         objects[pages_obj - 1] = (f"<< /Type /Pages /Kids [{' '.join(f'{k} 0 R' for k in kids)}] "
                                   f"/Count {len(kids)} >>").encode()
         stamp = datetime.now(timezone.utc).strftime("D:%Y%m%d%H%M%SZ")
-        info = add(b"<< /Title (" + _escape(self.title) + b") /Author (" + _escape(self.author)
-                   + b") /Producer (RehabSense report renderer) /CreationDate (" + stamp.encode() + b") >>")
+        info = add(b"<< /Title " + _text_string(self.title) + b" /Author " + _text_string(self.author)
+                   + b" /Producer (RehabSense report renderer) /CreationDate (" + stamp.encode() + b") >>")
 
         out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
         offsets = []
