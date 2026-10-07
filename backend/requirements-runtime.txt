@@ -1,0 +1,28 @@
+# What the API needs to run. The production image installs exactly this plus
+# requirements-production.txt; test-only tools (pytest, moto) stay out of it.
+fastapi>=0.115
+uvicorn[standard]>=0.30
+sqlalchemy>=2.0.35
+pydantic>=2.9
+pydantic-settings>=2.5
+email-validator>=2.2
+python-dotenv>=1.0
+websockets>=13.1
+alembic>=1.13
+argon2-cffi>=23.1
+pyjwt[crypto]>=2.9   # [crypto]: RS256 verification of Google ID tokens
+# Server-to-server calls to Google and Facebook during social sign-in.
+httpx>=0.27
+numpy>=1.26
+# Activity-model inference (hardware v2). Pinned to the version ml/ trains
+# with: model bundles are joblib pickles and the server refuses a bundle
+# whose scikit-learn major.minor differs from the installed one.
+scikit-learn==1.9.1
+
+# NOTE: scipy is intentionally absent. The pipeline needs exactly one filter
+# from it — a 2nd-order Butterworth low-pass — and scipy has no wheel for
+# recent Python versions and fails to build from source. That filter is
+# implemented directly in app/processing/filters.py via the bilinear
+# transform, and tests/test_processing.py verifies its magnitude response
+# against the analytic Butterworth (-3.01 dB at cutoff, 12 dB/octave
+# asymptotic roll-off). Re-add scipy only if more DSP is genuinely needed.

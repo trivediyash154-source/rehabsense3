@@ -9,12 +9,17 @@ from __future__ import annotations
 import json
 import logging
 import sys
+from datetime import datetime, timezone
 from typing import Any
 
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, Any] = {
+            # UTC, millisecond precision: container logs on a serverless host
+            # carry no timestamp of their own, which makes a cold start
+            # impossible to break down without one.
+            "ts": datetime.fromtimestamp(record.created, timezone.utc).isoformat(timespec="milliseconds"),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

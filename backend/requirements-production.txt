@@ -1,4 +1,5 @@
-# Production extras on top of requirements.txt (installed in the Docker image).
--r requirements.txt
-psycopg[binary]==3.3.6      # PostgreSQL driver (validated against PostgreSQL 16.2)
+# Production image: the runtime set plus the PostgreSQL driver and S3 client.
+# Test tools (pytest, moto) are deliberately not installed in production.
+-r requirements-runtime.txt
+psycopg[binary]==3.3.6      # PostgreSQL driver (validated against PostgreSQL 16.2 and 17)
 boto3==1.43.108             # STORAGE_BACKEND=s3 (S3 / R2 / MinIO)

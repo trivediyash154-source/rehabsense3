@@ -4,32 +4,30 @@ Everything runs on free tiers with no payment card:
 
 | Piece | Where | Project / ID |
 |---|---|---|
-| Next.js website | Vercel | `rehabsense-platform` (`prj_ohl5XWEARZ5eXHeFMtvBTX6SUJyS`), https://rehabsense-platform.vercel.app |
-| FastAPI backend (REST, WebSockets, ML inference, simulator) | Vercel container image (`backend/Dockerfile`, Fluid compute, region `cle1`) | `rehabsense-api` (`prj_ylHGtJbAT868yeCW1LtrslhN0Wz6`), https://rehabsense-api.vercel.app |
-| PostgreSQL 17 | Neon free plan, AWS us-east-2 | project `little-unit-00095075` |
+| Next.js website | Vercel, functions in `sin1` (Singapore) | `rehabsense-platform` (`prj_ohl5XWEARZ5eXHeFMtvBTX6SUJyS`), https://rehabsense-platform.vercel.app |
+| FastAPI backend (REST, WebSockets, ML inference, simulator) | Vercel container image (`backend/Dockerfile`, Fluid compute, region `sin1`) | `rehabsense-api` (`prj_ylHGtJbAT868yeCW1LtrslhN0Wz6`), https://rehabsense-api.vercel.app |
+| PostgreSQL 17 | Neon free plan, AWS `ap-southeast-1` (Singapore), in the owner's own Neon account (no expiry) | project `ancient-queen-09719759` ("rehabsense") |
 
 ```
-Browser ──HTTPS──▶ rehabsense-platform.vercel.app (Next.js)
-   │                  └─ /api/*  ──rewrite──▶ rehabsense-api.vercel.app (FastAPI container)
+Browser ──HTTPS──▶ rehabsense-platform.vercel.app (Next.js, sin1)
+   │                  └─ /api/*  ──rewrite──▶ rehabsense-api.vercel.app (FastAPI container, sin1)
    └──WSS + 60 s ticket──────────────────────▶ rehabsense-api.vercel.app/ws/live/{session}
 ESP32 ──WSS + device key──────────────────────▶ rehabsense-api.vercel.app/ws/ingest/v2/{session}
-                                               FastAPI ──▶ Neon PostgreSQL (all records,
+                                               FastAPI ──▶ Neon PostgreSQL, Singapore (all records,
                                                            raw samples, ML results)
                                                        └─▶ LISTEN/NOTIFY live relay
 ```
 
-## Keep the database: claim it before 2026-10-09 17:41 UTC
+Website, API and database are in the same region, the closest Neon region to
+India, where the users are. Each API round trip from India is about 0.1 s.
+When everything was in the US it was 0.25–0.27 s; see
+[PERFORMANCE_AUDIT.md](PERFORMANCE_AUDIT.md).
 
-The Neon project was created without an account and is deleted at that time
-unless it is claimed into a Neon account (free; `trivediyash154@gmail.com`
-already has one). In a terminal on this Mac:
-
-```bash
-npx neonctl@latest claim accept little-unit-00095075
-```
-
-It prints a link (valid 15 minutes): open it while signed in to Neon and
-confirm. The connection string does not change, so nothing else needs updating.
+**History.** Until 2026-10-07 the database was a temporary "claimable" Neon project
+(`little-unit-00095075`, us-east-2). Starting its claim rotated the database password
+and the claim never completed, which took the API down. The current database was
+created directly in the owner's Neon account, migrated to the head and connected. The
+old project held only test accounts and Neon deletes it automatically.
 
 ## Free-plan behaviour (stated plainly)
 
@@ -85,7 +83,11 @@ VERCEL_ORG_ID=team_2sBcwmlki2DTOyMtbjFvI4pi VERCEL_PROJECT_ID=prj_ylHGtJbAT868ye
 
 Database migrations run before an API deploy that changes the schema:
 `cd backend && DATABASE_URL='<neon direct URL>' .venv/bin/python -m alembic upgrade head`
-(the API refuses to start if the schema is behind).
+(the API refuses to start if the schema is behind). The direct (non-pooled)
+connection string comes from the Neon console (project "rehabsense" → Connect)
+or `npx neonctl@latest connection-string --project-id ancient-queen-09719759`.
+The API itself also uses the direct connection, because the LISTEN/NOTIFY relay
+cannot run through a transaction pooler.
 
 Checks: `bash scripts/vercel_readiness_check.sh` (website build) and
 `backend/.venv/bin/python scripts/deployment_check.py --api https://rehabsense-api.vercel.app --frontend https://rehabsense-platform.vercel.app`

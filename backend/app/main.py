@@ -2,15 +2,22 @@
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
+import time
 
-from fastapi import FastAPI, Request
-from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+# Process start, near enough (the interpreter has just started). Logged at
+# startup so a cold start can be split into host boot, imports and DB work.
+_PROCESS_T0 = time.time()
+_IMPORT_T0 = time.perf_counter()
 
-from app.api import (
+from contextlib import asynccontextmanager  # noqa: E402
+
+from fastapi import FastAPI, Request  # noqa: E402
+from fastapi.exceptions import RequestValidationError  # noqa: E402
+from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.responses import JSONResponse  # noqa: E402
+
+from app.api import (  # noqa: E402
     dev,
     focus,
     auth,
@@ -27,10 +34,10 @@ from app.api import (
     sessions,
     users,
 )
-from app.core.config import get_settings
-from app.core.logging import configure_logging, get_logger, log_event
-from app.db.database import Base, SessionLocal, engine
-from app.db.seed import seed_exercises
+from app.core.config import get_settings  # noqa: E402
+from app.core.logging import configure_logging, get_logger, log_event  # noqa: E402
+from app.db.database import Base, SessionLocal, engine  # noqa: E402
+from app.db.seed import seed_exercises  # noqa: E402
 
 # Codes for errors raised by the framework itself (a 404 on an unknown path,
 # a 405, and so on) rather than by our own typed exceptions.
@@ -47,6 +54,7 @@ logger = get_logger("rehabsense.app")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    startup_t0 = time.perf_counter()
     settings.assert_production_safe()
     # Alembic owns the schema; create_all only bootstraps a fresh dev SQLite
     # file so `uvicorn app.main:app` works with zero setup, as documented.
@@ -68,7 +76,11 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
     log_event(logger, "startup", analytics_version=settings.analytics_version,
-              exercises_seeded=created, debug=settings.debug)
+              exercises_seeded=created, debug=settings.debug,
+              # Cold-start breakdown: imports, then schema check + seeding
+              # (database, including waking it if it was suspended).
+              process_started=_PROCESS_T0, import_ms=_IMPORT_MS,
+              startup_db_ms=round((time.perf_counter() - startup_t0) * 1000))
     # Which social sign-in providers are offered, and why not (variable names
     # only, never values).
     for provider in ("google", "facebook"):
@@ -83,6 +95,10 @@ async def lifespan(app: FastAPI):
     log_event(logger, "shutdown")
 
 
+# Interactive API docs are a development tool: off in production, so the live
+# API does not publish a browsable map of every route to anyone who asks.
+_docs = not settings.is_production
+
 app = FastAPI(
     title=settings.app_name,
     version="1.0.0",
@@ -91,6 +107,9 @@ app = FastAPI(
         "estimated decision-support indicator, not a diagnosis or clinical measurement."
     ),
     lifespan=lifespan,
+    docs_url="/docs" if _docs else None,
+    redoc_url="/redoc" if _docs else None,
+    openapi_url="/openapi.json" if _docs else None,
 )
 
 # Explicit origins only — never a wildcard.
@@ -183,13 +202,16 @@ for prefix in (API, f"{API}/v1"):
 app.include_router(realtime.router)
 
 
+_IMPORT_MS = round((time.perf_counter() - _IMPORT_T0) * 1000)
+
+
 @app.get("/")
 def root():
     return {
         "name": settings.app_name,
         "version": "1.0.0",
         "analytics_version": settings.analytics_version,
-        "docs": "/docs",
+        "docs": "/docs" if _docs else None,
         "responsible_use": (
             "Research prototype. Estimated decision-support indicators only."
         ),

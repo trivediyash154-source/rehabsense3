@@ -5,8 +5,8 @@
 ```
 Vercel: Next.js website (rehabsense-platform.vercel.app)
   ↓ /api/* rewrite                      Browser ── WSS + ticket ──┐
-Vercel: FastAPI container (rehabsense-api.vercel.app, Fluid compute, cle1) ◀┘
-  ├─▶ Neon PostgreSQL 17 (us-east-2): users, patients, sessions, devices,
+Vercel: FastAPI container (rehabsense-api.vercel.app, Fluid compute, sin1) ◀┘
+  ├─▶ Neon PostgreSQL 17 (ap-southeast-1, owner's account): users, patients, sessions, devices,
   │    calibrations, raw samples, ML results, audit; LISTEN/NOTIFY live relay
   └─▶ ML inference in-process (SHA-256-verified bundles, both models)
 ESP32 ── WSS + per-device key ──▶ FastAPI   (not yet tested with a board)
@@ -33,9 +33,7 @@ ESP32 ── WSS + per-device key ──▶ FastAPI   (not yet tested with a boa
 7. Earlier the same day: misleading Google/Facebook/phone/reset flows removed or
    marked unavailable; optional, unverified phone at sign-up; cookie consent banner.
 
-**Remaining**: claim the Neon database before 2026-10-09 17:41 UTC (see
-VERCEL_DEPLOYMENT.md); object storage not deployed (exports use temporary
-disk); physical hardware NOT TESTED; clinical validation NONE.
+**Update 2026-10-07:** the database now lives permanently in the owner's Neon account (project `ancient-queen-09719759`, Singapore); no claim is needed. See [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md) and [AUTHENTICATION_PRODUCTION_REPORT.md](AUTHENTICATION_PRODUCTION_REPORT.md) for the current state.
 
 **Verdict: PRODUCTION READY — EXTERNAL INFRASTRUCTURE STILL REQUIRED**
 (the Neon claim, S3/R2 storage for durable exports, and physical-hardware validation).

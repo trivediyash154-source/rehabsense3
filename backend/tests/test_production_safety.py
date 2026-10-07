@@ -110,3 +110,30 @@ def test_comma_separated_env_string_still_parses() -> None:
     settings = build(cors_origins="https://a.example.com, https://b.example.com")
     assert settings.cors_origins == ["https://a.example.com", "https://b.example.com"]
     settings.assert_production_safe()
+
+
+def test_interactive_api_docs_are_off_in_production(monkeypatch):
+    """/docs, /redoc and /openapi.json are a development tool, not a public surface."""
+    import importlib
+
+    import app.core.config as config
+
+    for key, value in {
+        "ENVIRONMENT": "production", "DEBUG": "false",
+        "DATABASE_URL": "postgresql+psycopg://u:p@127.0.0.1:1/x",
+        "SECRET_KEY": "x" * 48, "CORS_ORIGINS": "https://example.com",
+        "COOKIE_SECURE": "true", "STORAGE_BACKEND": "local", "STORAGE_LOCAL_DIR": "/tmp/rs-docs-test",
+    }.items():
+        monkeypatch.setenv(key, value)
+    config.get_settings.cache_clear()
+    try:
+        import app.main as main
+
+        prod = importlib.reload(main)
+        assert prod.app.docs_url is None and prod.app.redoc_url is None and prod.app.openapi_url is None
+    finally:
+        for key in ("ENVIRONMENT", "DEBUG", "DATABASE_URL", "SECRET_KEY", "CORS_ORIGINS",
+                    "COOKIE_SECURE", "STORAGE_BACKEND", "STORAGE_LOCAL_DIR"):
+            monkeypatch.delenv(key, raising=False)
+        config.get_settings.cache_clear()
+        importlib.reload(main)

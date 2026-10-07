@@ -1,36 +1,14 @@
-fastapi>=0.115
-uvicorn[standard]>=0.30
-sqlalchemy>=2.0.35
-pydantic>=2.9
-pydantic-settings>=2.5
-email-validator>=2.2
-python-dotenv>=1.0
-websockets>=13.1
-alembic>=1.13
-argon2-cffi>=23.1
-pyjwt[crypto]>=2.9   # [crypto]: RS256 verification of Google ID tokens
-numpy>=1.26
-# Activity-model inference (hardware v2). Pinned to the version ml/ trains
-# with: model bundles are joblib pickles and the server refuses a bundle
-# whose scikit-learn major.minor differs from the installed one.
-scikit-learn==1.9.1
-
-# NOTE: scipy is intentionally absent. The pipeline needs exactly one filter
-# from it — a 2nd-order Butterworth low-pass — and scipy has no wheel for
-# recent Python versions and fails to build from source. That filter is
-# implemented directly in app/processing/filters.py via the bilinear
-# transform, and tests/test_processing.py verifies its magnitude response
-# against the analytic Butterworth (-3.01 dB at cutoff, 12 dB/octave
-# asymptotic roll-off). Re-add scipy only if more DSP is genuinely needed.
+# Development: everything the API needs to run (requirements-runtime.txt) plus
+# the test tools. `pip install -r requirements.txt` sets up a dev machine.
+-r requirements-runtime.txt
 
 # Development / test
 pytest>=8.3
 pytest-asyncio>=0.24
-httpx>=0.27
-
-# Production-only dependencies (PostgreSQL driver, S3 client) are in
-# requirements-production.txt.
 
 # Tests for the S3 storage backend (S3 API emulator; no real bucket)
 moto==5.2.3
 boto3==1.43.108
+
+# Production-only dependencies (PostgreSQL driver, S3 client) are in
+# requirements-production.txt.

@@ -16,7 +16,7 @@ FROM python:3.14-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 WORKDIR /app
 
-COPY backend/requirements.txt backend/requirements-production.txt ./
+COPY backend/requirements-runtime.txt backend/requirements-production.txt ./
 RUN pip install -r requirements-production.txt
 
 COPY backend/ ./

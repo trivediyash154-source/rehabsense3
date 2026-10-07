@@ -73,9 +73,10 @@ export default function PrivacyPage() {
 
         <h2>Where it is stored</h2>
         <p>
-          The website and API run on Vercel in the United States. Data is stored in a Neon
-          PostgreSQL database hosted on Amazon Web Services in the United States (Ohio). Nothing is
-          sold or shared with advertisers, and no third-party tracking is used.
+          The website and API run on Vercel, with their servers in Singapore (Vercel&apos;s network
+          delivers the static parts of the site from locations worldwide). Data is stored in a Neon
+          PostgreSQL database hosted on Amazon Web Services in Singapore. Nothing is sold or shared
+          with advertisers, and no third-party tracking is used.
         </p>
 
         <h2>Deleting your data</h2>
