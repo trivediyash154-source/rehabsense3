@@ -19,6 +19,7 @@ from app.api import (
     hardware,
     health,
     notifications,
+    oauth,
     patients,
     progress,
     realtime,
@@ -68,6 +69,12 @@ async def lifespan(app: FastAPI):
         db.close()
     log_event(logger, "startup", analytics_version=settings.analytics_version,
               exercises_seeded=created, debug=settings.debug)
+    # Which social sign-in providers are offered, and why not (variable names
+    # only, never values).
+    for provider in ("google", "facebook"):
+        problem = settings.oauth_problem(provider)
+        log_event(logger, "oauth_provider", provider=provider, ready=problem is None,
+                  reason=problem or "ok")
     yield
     # No simulator process may outlive the server that started it.
     from app.services import sim_runner
@@ -159,6 +166,7 @@ API = settings.api_prefix
 for prefix in (API, f"{API}/v1"):
     app.include_router(health.router, prefix=prefix)
     app.include_router(auth.router, prefix=prefix)
+    app.include_router(oauth.router, prefix=prefix)
     app.include_router(users.router, prefix=prefix)
     app.include_router(patients.router, prefix=prefix)
     app.include_router(progress.router, prefix=prefix)

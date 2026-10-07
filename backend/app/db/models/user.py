@@ -33,8 +33,10 @@ class User(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(254), unique=True, index=True, nullable=False)
-    # Argon2id digest. The plaintext is never stored or logged.
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Argon2id digest. The plaintext is never stored or logged. NULL for an
+    # account created through Google or Facebook that never set a password:
+    # password sign-in is then refused like any wrong password.
+    password_hash: Mapped[str | None] = mapped_column(String(255))
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     preferred_name: Mapped[str | None] = mapped_column(String(120))
     phone: Mapped[str | None] = mapped_column(String(32))

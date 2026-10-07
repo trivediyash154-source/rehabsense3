@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { LogOut, RotateCcw, Download } from "lucide-react";
 import { WorkspaceHeader, useWorkspace } from "@/components/workspace/WorkspaceShell";
 import { SettingsSection, SettingsRow, Toggle } from "@/components/workspace/SettingsRow";
@@ -10,6 +10,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useData } from "@/lib/api/DataProvider";
 import { themeLabels } from "@/lib/theme";
 import { storePreference, type PreferenceKey } from "@/lib/consent";
+import { DeleteAccountSection, SignInMethodsSection } from "@/components/workspace/SignInMethods";
 
 /**
  * Settings.
@@ -102,6 +103,11 @@ export default function SettingsPage() {
             }
           />
         </SettingsSection>
+
+        {/* ---------------- Sign-in methods ---------------- */}
+        <Suspense fallback={null}>
+          <SignInMethodsSection />
+        </Suspense>
 
         {/* ---------------- Appearance ---------------- */}
         <SettingsSection title="Appearance" note="Stored in this browser only.">
@@ -264,6 +270,9 @@ export default function SettingsPage() {
             control={<span className="set-badge">Research prototype</span>}
           />
         </SettingsSection>
+
+        {/* ---------------- Delete account ---------------- */}
+        <DeleteAccountSection />
       </div>
     </>
   );

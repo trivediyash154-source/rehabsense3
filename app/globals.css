@@ -3376,6 +3376,35 @@ table {
 .provider-mark-google,
 .provider-mark-facebook { background: #fff; border-color: rgba(0, 0, 0, 0.1); }
 
+/* A provider the server has not configured: stated, never faked. */
+.social-off {
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.social-terms { margin-top: -4px; }
+.field-hint { color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+
+/* Settings: connected sign-in methods. */
+.signin-method { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.signin-method .set-value { overflow-wrap: anywhere; }
+.danger-zone .button-outline { border-color: color-mix(in srgb, var(--coral) 55%, var(--line-strong)); color: var(--coral); }
+.delete-account-form { display: flex; flex-direction: column; gap: 12px; }
+.delete-account-form input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+}
+
 .provider-mark-phone { position: relative; color: var(--cyan); overflow: hidden; }
 
 /* A signal quietly travelling through the phone mark. */
@@ -7633,6 +7662,8 @@ table {
 .legal-page { padding-block: 120px 64px; display: grid; gap: 16px; max-width: 72rem; }
 .legal-page h1 { margin: 0; font-size: clamp(28px, 4vw, 40px); }
 .legal-page p { margin: 0; color: var(--muted); max-width: 60rem; line-height: 1.65; }
+.legal-page h2 { margin: 12px 0 0; font-size: 18px; }
+.legal-steps { margin: 0; padding-left: 1.3rem; display: grid; gap: 6px; color: var(--muted); line-height: 1.6; max-width: 60rem; }
 .legal-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
 .legal-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 44rem; }
 .legal-table th, .legal-table td {

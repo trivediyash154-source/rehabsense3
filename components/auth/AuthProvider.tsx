@@ -21,6 +21,12 @@ interface AuthState {
   user: SessionUser | null;
   /** Re-reads the session from the server; call after signing in or out. */
   refresh: () => Promise<SessionUser | null>;
+  /**
+   * Adopt the user a successful sign-in or sign-up just returned. That
+   * response already came from the server, so asking /me again would only add
+   * a round trip before the workspace opens.
+   */
+  setSignedIn: (user: SessionUser) => void;
   signOut: () => Promise<void>;
 }
 
@@ -28,6 +34,7 @@ const AuthContext = createContext<AuthState>({
   status: "loading",
   user: null,
   refresh: async () => null,
+  setSignedIn: () => {},
   signOut: async () => {},
 });
 
@@ -79,6 +86,11 @@ export function AuthProvider({
     void refresh();
   }, [initialUser, serverResolved, refresh]);
 
+  const setSignedIn = useCallback((next: SessionUser) => {
+    setUser(next);
+    setStatus("authenticated");
+  }, []);
+
   const signOut = useCallback(async () => {
     try {
       await endSession();
@@ -89,8 +101,8 @@ export function AuthProvider({
   }, []);
 
   const value = useMemo(
-    () => ({ status, user, refresh, signOut }),
-    [status, user, refresh, signOut],
+    () => ({ status, user, refresh, setSignedIn, signOut }),
+    [status, user, refresh, setSignedIn, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

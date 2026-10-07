@@ -47,7 +47,8 @@ from app.services import audit_service, authz
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def _tokens(user: User) -> tuple[str, str]:
+def issue_tokens(user: User) -> tuple[str, str]:
+    """The (access, refresh) pair for a session -- the same for every sign-in method."""
     return (
         create_access_token(user.id, user.role.value, user.token_version),
         create_refresh_token(user.id, user.token_version),
@@ -56,7 +57,7 @@ def _tokens(user: User) -> tuple[str, str]:
 
 def _establish(response: Response, user: User) -> AuthResponse:
     """Start a browser session: cookies out, user object back, no token."""
-    access, refresh = _tokens(user)
+    access, refresh = issue_tokens(user)
     set_auth_cookies(response, access, refresh)
     return AuthResponse(
         user=UserPublic.model_validate(user),
@@ -112,7 +113,9 @@ def _authenticate(payload: UserLogin, db: DbDep) -> User:
             "Too many failed sign-in attempts. Please try again in a few minutes."
         )
 
-    if not verify_password(payload.password, user.password_hash):
+    # An account created through Google or Facebook has no password: refused
+    # exactly like a wrong one, so this endpoint reveals nothing about it.
+    if user.password_hash is None or not verify_password(payload.password, user.password_hash):
         user.failed_login_count += 1
         if user.failed_login_count >= settings.max_failed_logins:
             user.locked_until = now + timedelta(minutes=settings.lockout_minutes)
@@ -216,7 +219,7 @@ def token(payload: UserLogin, db: DbDep) -> TokenPair:
     stable, header-based contract.
     """
     user = _authenticate(payload, db)
-    access, refresh_token = _tokens(user)
+    access, refresh_token = issue_tokens(user)
     return TokenPair(
         access_token=access,
         refresh_token=refresh_token,

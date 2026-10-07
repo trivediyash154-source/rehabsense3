@@ -34,6 +34,11 @@ def configure_logging(level: str = "INFO") -> None:
     root.setLevel(level.upper())
     # Uvicorn's access log duplicates our structured lines.
     logging.getLogger("uvicorn.access").disabled = True
+    # httpx logs every request URL at INFO. Calls to Google and Facebook carry
+    # authorization codes, provider tokens and (for Facebook's debug_token)
+    # the app secret in their query strings, so those lines must never print.
+    for noisy in ("httpx", "httpcore"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
 def get_logger(name: str) -> logging.Logger:

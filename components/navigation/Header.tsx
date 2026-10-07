@@ -170,7 +170,9 @@ export function Footer() {
           <Link href="/#responsible">Responsible use &amp; privacy</Link>
           <Link href="/#research">Technical foundation</Link>
           <Link href="/contact">Contact the team</Link>
+          <Link href="/privacy">Privacy notice</Link>
           <Link href="/cookies">Cookie policy</Link>
+          <Link href="/data-deletion">Delete your data</Link>
           <CookieSettingsButton className="footer-link-button" />
         </nav>
         <div className="footer-meta">

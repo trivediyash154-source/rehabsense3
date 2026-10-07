@@ -70,7 +70,7 @@ export const authDefaults = {
   phone: "",
   password: "",
   confirmPassword: "",
-  role: "",
+  role: "Patient",
   code: "",
   consent: false,
 };

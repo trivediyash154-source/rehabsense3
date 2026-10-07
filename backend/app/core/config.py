@@ -63,6 +63,26 @@ class Settings(BaseSettings):
     max_failed_logins: int = 8
     lockout_minutes: int = 15
 
+    # --- social sign-in (OAuth 2.0 authorization-code flow) ---
+    # A provider is offered only when its id AND secret are set. Secrets stay
+    # on this server: the browser only ever sees the provider's own sign-in
+    # page and a redirect, never a client secret or a provider token.
+    #
+    # The redirect URI must be on the FRONTEND origin (the /api/* proxy), e.g.
+    # https://rehabsense-platform.vercel.app/api/auth/google/callback. The
+    # session cookie is first-party to that origin; a callback on this API's
+    # own host would set the cookie where the website can never send it.
+    # Unset, it defaults to <first CORS origin>/api/auth/<provider>/callback.
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    google_redirect_uri: str | None = None
+    facebook_app_id: str | None = None
+    facebook_app_secret: str | None = None
+    facebook_redirect_uri: str | None = None
+    facebook_graph_version: str = "v25.0"
+    # How long a started sign-in may take before its state is refused.
+    oauth_state_minutes: int = 10
+
     # --- CORS: explicit origins, never a wildcard ---
     # Common Next.js dev ports. Anything else must be set explicitly via
     # CORS_ORIGINS — a browser silently blocking the health probe looks
@@ -197,6 +217,52 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
+
+    def oauth_redirect_uri(self, provider: str) -> str | None:
+        explicit = {"google": self.google_redirect_uri,
+                    "facebook": self.facebook_redirect_uri}.get(provider)
+        if explicit:
+            return explicit.strip()
+        if not self.cors_origins:
+            return None
+        return f"{self.cors_origins[0].rstrip('/')}{self.api_prefix}/auth/{provider}/callback"
+
+    def oauth_problem(self, provider: str) -> str | None:
+        """Why a provider cannot be offered, or None when it is ready.
+
+        Never raises: a half-configured provider must not take email sign-in
+        down with it, so it is reported (startup log, /auth/providers) and
+        simply not offered.
+        """
+        from urllib.parse import urlsplit
+
+        if provider == "google":
+            ident, secret = self.google_client_id, self.google_client_secret
+            names = ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET")
+        elif provider == "facebook":
+            ident, secret = self.facebook_app_id, self.facebook_app_secret
+            names = ("FACEBOOK_APP_ID", "FACEBOOK_APP_SECRET")
+        else:
+            return "unknown provider"
+        missing = [n for n, v in zip(names, (ident, secret)) if not (v and v.strip())]
+        if len(missing) == 2:
+            return "not configured"
+        if missing:
+            return "incomplete configuration: " + ", ".join(missing) + " not set"
+        uri = self.oauth_redirect_uri(provider)
+        if not uri:
+            return "no redirect URI"
+        parts = urlsplit(uri)
+        local = parts.hostname in {"localhost", "127.0.0.1"}
+        if parts.scheme != "https" and not (parts.scheme == "http" and local and not self.is_production):
+            return "redirect URI must use https"
+        origin = f"{parts.scheme}://{parts.netloc}"
+        if self.is_production and origin not in self.cors_origins:
+            # The session cookie would land on a host the website never uses.
+            return "redirect URI must be on the website origin listed in CORS_ORIGINS"
+        if parts.path != f"{self.api_prefix}/auth/{provider}/callback":
+            return f"redirect URI path must be {self.api_prefix}/auth/{provider}/callback"
+        return None
 
     def assert_production_safe(self) -> None:
         """Refuse to start with an unsafe configuration outside debug mode.

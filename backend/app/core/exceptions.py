@@ -77,6 +77,12 @@ class EmailAlreadyRegistered(Conflict):
     default_message = "An account with this email already exists."
 
 
+class LastSignInMethod(Conflict):
+    code = "LAST_SIGN_IN_METHOD"
+    default_message = ("This is the only way to sign in to this account. Connect another "
+                       "sign-in method first.")
+
+
 class InvalidSensorPacket(AppError):
     code = "INVALID_SENSOR_PACKET"
     status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
@@ -99,3 +105,14 @@ class BadRequest(AppError):
     code = "BAD_REQUEST"
     status_code = status.HTTP_400_BAD_REQUEST
     default_message = "The request is invalid."
+
+
+class ConfirmationRequired(BadRequest):
+    code = "CONFIRMATION_REQUIRED"
+    default_message = "Type DELETE to confirm."
+
+
+class ActiveAssignments(Conflict):
+    code = "ACTIVE_ASSIGNMENTS"
+    default_message = ("This account still has active patient assignments. End or hand them "
+                       "over before deleting the account.")

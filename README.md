@@ -88,8 +88,16 @@ API response is authorised server-side against the real session — a patient
 cannot reach another patient's records by editing a URL, and an unauthorised
 record answers 404 rather than confirming it exists.
 
-Social sign-in, password-reset email and SMS verification are **not**
-configured; those screens say so instead of implying a message was sent.
+**Continue with Google** and **Continue with Facebook** use the real providers
+(authorization-code flow, verified server-side) and end in the same HttpOnly
+session as email sign-in. Each is offered only once its credentials are set on
+the API ([GOOGLE_OAUTH_SETUP.md](GOOGLE_OAUTH_SETUP.md),
+[FACEBOOK_OAUTH_SETUP.md](FACEBOOK_OAUTH_SETUP.md)); until then the button says
+"Not configured". Accounts are never merged by email: a provider is connected to
+an existing account only while signed in to it (Settings → Sign-in methods).
+Design: [AUTHENTICATION_ARCHITECTURE.md](AUTHENTICATION_ARCHITECTURE.md).
+Password-reset email and SMS verification are **not** configured; those screens
+say so instead of implying a message was sent.
 
 The workspace header always states its data source: **LIVE BACKEND · SIGNED
 IN**, **BACKEND REACHABLE · NOT SIGNED IN · SHOWING DEMO DATA**, or **DEMO DATA
@@ -118,7 +126,9 @@ fallback in production.
 |---|---|
 | Landing page, navigation, theming | Implemented |
 | Sign up / sign in | Implemented against the FastAPI backend (Argon2id, HttpOnly cookie) |
-| Password reset email, SMS verification, social sign-in | **Not configured**; the screens say so |
+| Google / Facebook sign-in | Implemented (real OAuth, server-side verification, identity table, no email merge); **live once the provider credentials are set** |
+| Password reset email, SMS verification | **Not configured**; the screens say so |
+| Account deletion | Implemented (Settings → Delete account) |
 | Contact form | Implemented; **delivery is off** until configured |
 | Demo dashboard | Implemented against **illustrative, invented data**, labelled as such |
 | Workspace (patients, sessions, live view, hardware lab) | Implemented against the backend |

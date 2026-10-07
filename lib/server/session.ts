@@ -22,14 +22,19 @@ export async function getServerUser(): Promise<{ user: SessionUser | null; resol
   // Frontend-only deployment (BACKEND_ORIGIN=none): nobody can be signed in.
   if (!backendConnected()) return { user: null, resolved: true };
   const jar = await cookies();
+  // Only a session cookie can make anyone signed in. Any other cookie (the
+  // cookie-consent choice, say) must not cost every page render a round trip
+  // to the API just to hear "401".
+  if (!jar.get("rs_session")?.value) return { user: null, resolved: true };
   const cookieHeader = jar.toString();
-  if (!cookieHeader) return { user: null, resolved: true };
 
   try {
     // A short timeout: a hung backend must not hold the page render open.
-    // Without this a restarting API stalls every server-rendered request.
+    // A warm API answers in well under 100 ms from here; one waking from idle
+    // takes several seconds, and then the page is better shown at once and
+    // the session confirmed by the browser (AuthProvider) than held blank.
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 3000);
+    const timer = setTimeout(() => controller.abort(), 1500);
     let response: Response;
     try {
       response = await fetch(`${BACKEND_ORIGIN}/api/auth/me`, {

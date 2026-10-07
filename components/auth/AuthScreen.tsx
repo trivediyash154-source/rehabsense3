@@ -35,9 +35,13 @@ import {
   AuthError,
   checkApiAvailability,
   homeForRole,
+  oauthErrorMessage,
+  oauthStartUrl,
+  providerLabel,
   signIn,
   signUp,
   type ApiAvailability,
+  type SocialProvider,
   type UserRole,
 } from "@/lib/auth";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -57,6 +61,34 @@ const ROLE_VALUES: Record<string, UserRole> = {
   // Least privilege for anything unrecognised.
   Other: "PATIENT",
 };
+
+function GoogleMark() {
+  return (
+    <span className="provider-mark provider-mark-google" aria-hidden="true">
+      <svg viewBox="0 0 18 18" width="15" height="15">
+        <path fill="#EA4335" d="M9 3.48c1.69 0 2.83.73 3.48 1.34l2.54-2.48C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.96l2.91 2.26C4.6 5.05 6.62 3.48 9 3.48z" />
+        <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72l2.84 2.2c1.66-1.53 2.76-3.79 2.76-6.56z" />
+        <path fill="#FBBC05" d="M3.88 10.78A5.54 5.54 0 0 1 3.58 9c0-.62.11-1.22.29-1.78L.96 4.96A8.99 8.99 0 0 0 0 9c0 1.45.35 2.82.96 4.04l2.92-2.26z" />
+        <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.84-2.2c-.76.53-1.78.9-3.12.9-2.38 0-4.4-1.57-5.13-3.74L.96 13.04C2.44 15.98 5.48 18 9 18z" />
+      </svg>
+    </span>
+  );
+}
+
+function FacebookMark() {
+  return (
+    <span className="provider-mark provider-mark-facebook" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="#1877F2">
+        <path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.96h-1.51c-1.49 0-1.96.93-1.96 1.89v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z" />
+      </svg>
+    </span>
+  );
+}
+
+const SOCIAL: { id: SocialProvider; Mark: () => React.JSX.Element }[] = [
+  { id: "google", Mark: GoogleMark },
+  { id: "facebook", Mark: FacebookMark },
+];
 
 const copy: Record<AuthMode, { title: string; description: string; submit: string }> = {
   login: {
@@ -94,17 +126,29 @@ const copy: Record<AuthMode, { title: string; description: string; submit: strin
 export function AuthScreen({ mode }: { mode: AuthMode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { refresh } = useAuth();
+  const { setSignedIn } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [notice, setNotice] = useState("");
   const [succeeded, setSucceeded] = useState(false);
   const [terms, setTerms] = useState(false);
   const [api, setApi] = useState<ApiAvailability | null>(null);
+  // Which provider the browser is being sent to, for the button's own state.
+  const [redirecting, setRedirecting] = useState<SocialProvider | null>(null);
+  // The probe is still running after a couple of seconds: the API is waking.
+  const [slowProbe, setSlowProbe] = useState(false);
 
   const isSignup = mode === "signup";
   const isLogin = mode === "login";
   const hasForm = isLogin || isSignup;
   const notConnected = api?.state === "not-connected";
+  const providers = api?.state === "available" ? api.providers : null;
+
+  // A Google/Facebook attempt that came back without signing anyone in.
+  const oauthError = searchParams.get("oauth_error");
+  const oauthProviderParam = searchParams.get("provider");
+  const oauthProvider: SocialProvider | null =
+    oauthProviderParam === "google" || oauthProviderParam === "facebook" ? oauthProviderParam : null;
+  const linkAfterSignIn = isLogin && oauthError === "account_exists" && oauthProvider !== null;
 
   const {
     register,
@@ -124,12 +168,46 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
   // Ask whether the API is reachable before anyone types a password.
   const probeApi = useCallback(async () => {
     setApi(null);
-    setApi(await checkApiAvailability());
+    setSlowProbe(false);
+    const slow = setTimeout(() => setSlowProbe(true), 2000);
+    try {
+      setApi(await checkApiAvailability());
+    } finally {
+      clearTimeout(slow);
+    }
   }, []);
 
   useEffect(() => {
     if (hasForm) void probeApi();
   }, [hasForm, probeApi]);
+
+  // Coming back with the browser's Back button restores this page from the
+  // back/forward cache with the "Redirecting…" state still showing.
+  useEffect(() => {
+    const reset = (event: PageTransitionEvent) => {
+      if (event.persisted) setRedirecting(null);
+    };
+    window.addEventListener("pageshow", reset);
+    return () => window.removeEventListener("pageshow", reset);
+  }, []);
+
+  function continueWith(provider: SocialProvider) {
+    setNotice("");
+    if (providers && !providers[provider]?.enabled) {
+      // Never pretend: no redirect, no session, and email sign-in still works.
+      setNotice(oauthErrorMessage("not_configured", provider));
+      return;
+    }
+    // Still checking (a waking API can take a few seconds): let the server
+    // decide. Its start route either sends the browser to the provider or
+    // straight back here with "not configured" -- it never signs anyone in.
+    track("social_auth_started", { provider });
+    setRedirecting(provider);
+    const role = isSignup ? (ROLE_VALUES[watch("role")] ?? null) : null;
+    window.location.assign(
+      oauthStartUrl(provider, { next: searchParams.get("next"), role: role === "PATIENT" ? null : role }),
+    );
+  }
 
   async function submit(values: AuthValues) {
     setNotice("");
@@ -148,21 +226,27 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
 
       track(isSignup ? "signup_succeeded" : "login_succeeded", { role: session.user.role });
 
-      // Let the confirmation land before navigating; the cookie is already set,
-      // so this is presentation only.
+      // The response already carries the signed-in user and the cookie is
+      // set, so the workspace can open straight away: no second /me request
+      // and no artificial pause.
       setSucceeded(true);
-      await refresh();
+      setSignedIn(session.user);
+
+      if (linkAfterSignIn && oauthProvider) {
+        // Signed in to the existing account: now prove the Google/Facebook
+        // side too, and connect it to this account (never by email alone).
+        window.location.assign(
+          oauthStartUrl(oauthProvider, { intent: "link", next: "/workspace/settings" }),
+        );
+        return;
+      }
 
       const next = searchParams.get("next");
       const destination =
         next && next.startsWith("/") && !next.startsWith("//")
           ? next
           : homeForRole(session.user.role);
-
-      setTimeout(() => {
-        router.replace(destination);
-        router.refresh();
-      }, 550);
+      router.replace(destination);
     } catch (error) {
       // Only allowlisted codes reach analytics; anything else is bucketed.
       const raw = error instanceof AuthError ? error.code : "ERROR";
@@ -266,7 +350,14 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
       </div>
 
       <div className="auth-layout">
-        <AuthStage mode={mode} />
+        <AuthStage
+          mode={mode}
+          methods={
+            providers
+              ? ["EMAIL", ...SOCIAL.filter(({ id }) => providers[id]?.enabled).map(({ id }) => id.toUpperCase())]
+              : undefined
+          }
+        />
 
         <section className="auth-panel" aria-labelledby="auth-title">
           <div className="demo-mode-banner" role="note">
@@ -292,10 +383,10 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
                 <>
                   <strong>Research prototype — accounts are real</strong>
                   <p>
-                    Email and password sign-in creates a real account on the RehabSense backend:
-                    your password is stored only as an Argon2id hash, and the session is held in a
-                    cookie no script on this page can read. Social sign-in, phone sign-in and
-                    password reset are not available in this prototype.
+                    Every sign-in creates a real session on the RehabSense backend, held in a cookie
+                    no script on this page can read. Google and Facebook sign-in happen on their own
+                    pages: RehabSense never sees those passwords. Email passwords are stored only as
+                    an Argon2id hash. Phone sign-in and password reset are not available.
                   </p>
                 </>
               )}
@@ -314,7 +405,9 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
           {hasForm && api === null && (
             <p className="api-status" role="status">
               <LoaderCircle className="spin" size={14} aria-hidden="true" />
-              Checking the connection to the RehabSense API…
+              {slowProbe
+                ? "Waking the RehabSense API. After a quiet spell this takes a few seconds…"
+                : "Checking the connection to the RehabSense API…"}
             </p>
           )}
           {hasForm && api && api.state !== "available" && (
@@ -334,9 +427,117 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
             </div>
           )}
 
+          {isLogin && searchParams.get("account") === "deleted" && (
+            <div className="form-alert form-alert-info" role="status">
+              <Check size={16} aria-hidden="true" />
+              <span>Your RehabSense account was deleted and you were signed out everywhere.</span>
+            </div>
+          )}
+
+          {hasForm && oauthError && (
+            <div className={`form-alert${oauthError === "cancelled" || linkAfterSignIn ? " form-alert-info" : ""}`}
+                 role="alert">
+              <ShieldAlert size={16} aria-hidden="true" />
+              <span>
+                {oauthErrorMessage(oauthError, oauthProvider)}
+                {oauthError === "email_required" && oauthProvider === "facebook" && (
+                  <>
+                    {" "}
+                    <a className="inline-button" href={oauthStartUrl("facebook", { rerequest: true })}>
+                      Try Facebook again
+                    </a>
+                  </>
+                )}
+              </span>
+            </div>
+          )}
+
           {hasForm && (
             <form onSubmit={handleSubmit(submit)} noValidate>
-              <fieldset className="auth-fieldset" disabled={notConnected || succeeded}>
+              <fieldset className="auth-fieldset" disabled={notConnected || succeeded || redirecting !== null}>
+                {isSignup && (
+                  <div className="field">
+                    <label htmlFor="auth-role">I am a…</label>
+                    <div className="select-wrap">
+                      <select
+                        id="auth-role"
+                        {...register("role")}
+                        aria-invalid={Boolean(errors.role)}
+                        aria-describedby={errors.role ? "auth-role-error" : "auth-role-hint"}
+                      >
+                        {authRoles.map((role) => (
+                          <option key={role}>{role}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {errors.role ? (
+                      <span id="auth-role-error" className="field-error" role="alert">
+                        {errors.role.message}
+                      </span>
+                    ) : (
+                      <small id="auth-role-hint" className="field-hint">
+                        Applies to every sign-up option below, including Google and Facebook.
+                      </small>
+                    )}
+                  </div>
+                )}
+
+                {!linkAfterSignIn && (
+                  <>
+                    <div className="social-buttons">
+                      {SOCIAL.map(({ id, Mark }) => {
+                        const configured = providers?.[id]?.enabled ?? false;
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            className="button button-outline full-width"
+                            onClick={() => continueWith(id)}
+                            aria-describedby={providers && !configured ? `social-${id}-off` : undefined}
+                          >
+                            {redirecting === id ? (
+                              <LoaderCircle className="spin" size={17} aria-hidden="true" />
+                            ) : (
+                              <Mark />
+                            )}
+                            {redirecting === id
+                              ? `Redirecting to ${providerLabel[id]}…`
+                              : `Continue with ${providerLabel[id]}`}
+                            {providers && !configured && (
+                              <span className="social-off" id={`social-${id}-off`}>
+                                Not configured
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {isSignup && (
+                      <p className="fine-print social-terms">
+                        By continuing with Google or Facebook you accept the{" "}
+                        <button type="button" className="inline-button" onClick={() => setTerms(true)}>
+                          prototype terms and privacy notice
+                        </button>
+                        .
+                      </p>
+                    )}
+
+                    <div className="form-divider" aria-hidden="true">
+                      <span className="divider-signal">
+                        <svg viewBox="0 0 120 12" preserveAspectRatio="none">
+                          <path d="M0 6 H62 l5 -5 l6 10 l6 -10 l5 5 H120" />
+                        </svg>
+                      </span>
+                      <span className="divider-label">or continue with email</span>
+                      <span className="divider-signal divider-signal-flip">
+                        <svg viewBox="0 0 120 12" preserveAspectRatio="none">
+                          <path d="M0 6 H62 l5 -5 l6 10 l6 -10 l5 5 H120" />
+                        </svg>
+                      </span>
+                    </div>
+                  </>
+                )}
+
                 {isSignup && field("name", "Full name", "text", "name")}
                 {field("email", "Email address", "email", "email")}
                 {isSignup && phoneField}
@@ -361,28 +562,6 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
                       </small>
                     </div>
                     {field("confirmPassword", "Confirm password", "password", "new-password")}
-
-                    <div className="field">
-                      <label htmlFor="auth-role">I am a…</label>
-                      <div className="select-wrap">
-                        <select
-                          id="auth-role"
-                          {...register("role")}
-                          aria-invalid={Boolean(errors.role)}
-                          aria-describedby={errors.role ? "auth-role-error" : undefined}
-                        >
-                          <option value="">Select your role</option>
-                          {authRoles.map((role) => (
-                            <option key={role}>{role}</option>
-                          ))}
-                        </select>
-                      </div>
-                      {errors.role && (
-                        <span id="auth-role-error" className="field-error" role="alert">
-                          {errors.role.message}
-                        </span>
-                      )}
-                    </div>
 
                     <label className="checkbox-label">
                       <input
@@ -436,7 +615,9 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
                     </>
                   ) : (
                     <>
-                      {copy[mode].submit}
+                      {linkAfterSignIn && oauthProvider
+                        ? `Sign in and connect ${providerLabel[oauthProvider]}`
+                        : copy[mode].submit}
                       <ArrowUpRight size={17} aria-hidden="true" />
                     </>
                   )}
@@ -479,6 +660,12 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
           RehabSense API over HTTPS. Your password is stored only as an Argon2id hash, and your
           session is kept in an HttpOnly cookie that page scripts cannot read. Phone numbers are
           stored but never verified, and no email or SMS is ever sent.
+        </p>
+        <p>
+          With Google or Facebook, you sign in on that provider&apos;s own page. RehabSense receives
+          only your account identifier, name and email address, keeps no Google or Facebook token,
+          and never posts anything. You can disconnect a provider or delete your account in
+          Settings. See the <Link href="/privacy">privacy notice</Link> for details.
         </p>
         <p>
           Do not enter sensitive health information or a password you use elsewhere. Illustrative

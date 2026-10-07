@@ -92,6 +92,29 @@ class AuthResponse(BaseModel):
     expires_in: int
 
 
+class IdentityPublic(BaseModel):
+    """One connected sign-in provider. Never a provider token or subject id."""
+
+    provider: str
+    email: str | None = None
+    linked_at: UtcDatetime
+    last_used_at: UtcDatetime | None = None
+
+
+class SignInMethods(BaseModel):
+    password: bool
+    identities: list[IdentityPublic]
+    # Providers this deployment can connect (configured on the server).
+    available: dict[str, bool]
+
+
+class AccountDeletion(BaseModel):
+    # Typed by the person, so a stray click cannot delete an account.
+    confirm: str = Field(max_length=20)
+    # Required when the account has a password.
+    password: str | None = Field(default=None, max_length=200)
+
+
 class WsTicketRequest(BaseModel):
     session_id: int
 

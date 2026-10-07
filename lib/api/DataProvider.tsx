@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api, probeBackend, ApiError, type ApiPatient } from "./client";
+import { api, ApiError, type ApiPatient } from "./client";
 import {
   adaptMilestones,
   adaptSessions,
@@ -132,28 +132,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const load = useCallback(async () => {
     setError(null);
 
-    if (!(await probeBackend())) {
-      setPatient(null);
-      setProgress(null);
-      setMode("offline");
-      setError("The RehabSense API is not responding.");
-      return;
-    }
-
-    try {
-      await api.me();
-    } catch (cause) {
-      setPatient(null);
-      setProgress(null);
-      if (cause instanceof ApiError && cause.status === 401) {
-        setMode("unauthenticated");
-      } else {
-        setMode("offline");
-        setError(cause instanceof Error ? cause.message : "Could not reach the API.");
-      }
-      return;
-    }
-
+    // One request answers everything the old probe -> /me -> roster chain
+    // asked in three sequential round trips: a 401 means signed out, a
+    // network or gateway failure means the API is unreachable, and anything
+    // else is the roster. No short timeout either: a serverless API waking
+    // from idle takes a few seconds, and that is "starting", not "offline".
     try {
       // The whole roster, so a clinician can move between records without a
       // reload. Bounded because a real clinic list is not unlimited.
@@ -190,8 +173,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setPatients([]);
       setPatient(null);
       setProgress(null);
+      if (cause instanceof ApiError && cause.status === 401) {
+        setMode("unauthenticated");
+        return;
+      }
       setMode("offline");
-      setError(cause instanceof Error ? cause.message : "Could not load recorded data.");
+      setError(
+        cause instanceof ApiError
+          ? cause.message
+          : "The RehabSense API is not responding.",
+      );
     }
     // selectedId must be a dependency: with an empty array this callback
     // captures the first render's value forever, and switching patients

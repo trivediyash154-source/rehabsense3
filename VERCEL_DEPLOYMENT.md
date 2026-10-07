@@ -60,6 +60,15 @@ API (`rehabsense-api`): `DATABASE_URL` (sensitive), `SECRET_KEY` (sensitive),
 `ALLOW_SIMULATED_DEVICES=true`, `LIVE_RELAY=postgres`, `PORT=8000`,
 `RUN_MIGRATIONS_ON_START=false`, `LOG_LEVEL=INFO`.
 
+Social sign-in (API project only, optional): `GOOGLE_CLIENT_ID`,
+`GOOGLE_CLIENT_SECRET` (sensitive), `GOOGLE_REDIRECT_URI`, `FACEBOOK_APP_ID`,
+`FACEBOOK_APP_SECRET` (sensitive), `FACEBOOK_REDIRECT_URI`. The redirect URIs are on the
+**website** origin (`https://rehabsense-platform.vercel.app/api/auth/<provider>/callback`),
+so the session cookie stays first-party. `bash scripts/set_oauth_env.sh` stores them with
+hidden input. Setup steps are in [GOOGLE_OAUTH_SETUP.md](GOOGLE_OAUTH_SETUP.md) and
+[FACEBOOK_OAUTH_SETUP.md](FACEBOOK_OAUTH_SETUP.md); the design is in
+[AUTHENTICATION_ARCHITECTURE.md](AUTHENTICATION_ARCHITECTURE.md).
+
 No secret is a `NEXT_PUBLIC_` variable, and secrets never appear in git.
 
 ## Redeploy

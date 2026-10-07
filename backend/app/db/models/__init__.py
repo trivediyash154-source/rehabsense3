@@ -7,6 +7,7 @@ Alembic autogenerate and the test fixtures rely on.
 from app.db.models.audit import AuditLog  # noqa: F401
 from app.db.models.device import Device, Sensor  # noqa: F401
 from app.db.models.exercise import Exercise, ExercisePlan, ExercisePlanItem  # noqa: F401
+from app.db.models.identity import OAuthStateUse, UserIdentity  # noqa: F401
 from app.db.models.focus import (  # noqa: F401
     FocusEvent,
     FocusEventKind,
@@ -73,4 +74,6 @@ __all__ = [
     "RepEvent",
     "RiskFlag",
     "User",
+    "UserIdentity",
+    "OAuthStateUse",
 ]

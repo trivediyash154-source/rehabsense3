@@ -259,8 +259,14 @@ function StageArt({ mode }: { mode: AuthMode }) {
   );
 }
 
-export function AuthStage({ mode }: { mode: AuthMode }) {
+export function AuthStage({ mode, methods }: { mode: AuthMode; methods?: string[] }) {
   const copy = stageCopy[mode];
+  // The sign-in methods this deployment actually offers, once the API has said
+  // so; until then the static copy (email + password) stands.
+  const telemetry = methods && methods.length > 1 && (mode === "login" || mode === "signup")
+    ? copy.telemetry.map(([term, value]): [string, string] =>
+        term === "SIGN-IN" || term === "ACCOUNT" ? [term, methods.join(" · ")] : [term, value])
+    : copy.telemetry;
   const [live, setLive] = useState(false);
 
   // Lets the entrance choreography run once, after hydration.
@@ -283,7 +289,7 @@ export function AuthStage({ mode }: { mode: AuthMode }) {
       </div>
 
       <dl className="auth-telemetry" aria-hidden="true">
-        {copy.telemetry.map(([term, value]) => (
+        {telemetry.map(([term, value]) => (
           <div key={term}>
             <dt className="mono">{term}</dt>
             <dd className="mono">{value}</dd>
