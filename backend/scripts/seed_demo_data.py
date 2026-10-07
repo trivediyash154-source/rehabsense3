@@ -47,9 +47,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import importlib.util
+import logging
 import math
 import os
 import sys
+import threading
 import time
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
@@ -383,6 +385,38 @@ def ensure_patient(db, *, key: str, name: str, preferred_name: str | None, age: 
 # streaming through the real ingestion socket
 # --------------------------------------------------------------------- #
 
+class _DisconnectWatch(logging.Handler):
+    """Signals when the ingest handler has finished a session's disconnect.
+
+    The in-process test client cancels the server's socket task as soon as
+    its context exits. The script therefore closes the socket itself and
+    waits for the handler's own "hw_device_detached" event (logged after the
+    final raw chunk is stored and the device is marked offline), exactly the
+    point a real device's socket closure reaches on its own.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(level=logging.INFO)
+        self._done: set[int] = set()
+        self._cv = threading.Condition()
+
+    def emit(self, record: logging.LogRecord) -> None:
+        if record.getMessage() != "hw_device_detached":
+            return
+        session_id = (getattr(record, "context", None) or {}).get("session_id")
+        with self._cv:
+            self._done.add(session_id)
+            self._cv.notify_all()
+
+    def wait(self, session_id: int, timeout: float = 120.0) -> None:
+        with self._cv:
+            if not self._cv.wait_for(lambda: session_id in self._done, timeout):
+                raise RuntimeError(f"session {session_id}: the ingest handler did not finish the disconnect")
+
+
+_DETACHED = _DisconnectWatch()
+logging.getLogger("rehabsense.ingest").addHandler(_DETACHED)
+
 def hello_frame(*, device_id: str, firmware: str, data_source: str, scenario: str,
                 force: bool, placement: str = "SHANK") -> dict:
     """The protocol-v2 hello, as the firmware builds it -- declared simulated."""
@@ -408,7 +442,8 @@ def hello_frame(*, device_id: str, firmware: str, data_source: str, scenario: st
     return hello
 
 
-def _send_samples(ws, samples: list[dict], rng: np.random.Generator, packet_loss: float) -> dict:
+def _send_samples(ws, session_id: int, samples: list[dict], rng: np.random.Generator,
+                  packet_loss: float) -> dict:
     sent = dropped = 0
     for k in range(0, len(samples), BATCH):
         batch = samples[k:k + BATCH]
@@ -425,6 +460,10 @@ def _send_samples(ws, samples: list[dict], rng: np.random.Generator, packet_loss
     ws.send_json({"type": "ping"})
     while ws.receive_json().get("type") != "pong":
         pass
+    # The device stops streaming: close, and let the server finish the
+    # disconnect (final raw chunk, device offline) before moving on.
+    ws.close(1000)
+    _DETACHED.wait(session_id)
     return {"packets_sent": sent, "packets_dropped": dropped, "samples_generated": len(samples)}
 
 
@@ -446,7 +485,7 @@ def stream_synthetic(client, session_id: int, p: PlannedSession) -> dict:
         n = int((still + move + p.inputs["movement_s"]) * RATE_HZ)
         samples = [{"ts": round(i / RATE_HZ, 4), "seq": i, **model.sample(i / RATE_HZ)} for i in range(n)]
         rng = np.random.default_rng(derived_seed(p.seed, "packets"))
-        return _send_samples(ws, samples, rng, p.inputs["packet_loss"])
+        return _send_samples(ws, session_id, samples, rng, p.inputs["packet_loss"])
 
 
 def _dsads_tools():
@@ -493,7 +532,7 @@ def stream_dsads(client, session_id: int, subject: str, by_key: dict, to_device,
         ack = ws.receive_json()
         if ack.get("type") != "hello_ack":
             raise RuntimeError(f"handshake refused: {ack}")
-        stats = _send_samples(ws, samples, rng, 0.0)
+        stats = _send_samples(ws, session_id, samples, rng, 0.0)
     return {**stats, "segments": segments}
 
 
@@ -674,7 +713,7 @@ def run(args) -> int:
     from app.main import app
     from app.sensing import model_store
     from app.sensing import provenance as prov
-    from app.services import audit_service, report_service, session_service
+    from app.services import audit_service, report_service, sensing_service, session_service
 
     settings = get_settings()
     print(f"database  {_redacted(settings.database_url)}")
@@ -781,6 +820,9 @@ def run(args) -> int:
                 totals["skipped"] += replayed["skipped"]
                 totals["samples"] += replayed["samples"]
 
+        # Demo sources are never left looking connected.
+        for device_id in (DEMO_DEVICE_ID, REPLAY_DEVICE_ID):
+            sensing_service.mark_device_offline(db, device_id)
         audit_service.record(db, action=AuditAction.DEMO_DATA_SEEDED, entity_type="demo_namespace",
                              entity_id=NAMESPACE, actor_id=generator.id, seed=args.seed,
                              generator_version=GENERATOR_VERSION, created=totals["created"],
