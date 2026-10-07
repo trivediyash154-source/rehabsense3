@@ -1,5 +1,15 @@
 # Google sign-in setup (free, no card)
 
+> **Status (2026-10-07): done for production.**
+>
+> - Google Cloud project `rehabsense` (owner trivediyash154@gmail.com) has web client
+>   "RehabSense web".
+> - Publishing status: **In production**.
+> - Vercel holds `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (Sensitive) and
+>   `GOOGLE_REDIRECT_URI` on `rehabsense-api`.
+>
+> The steps below are for recreating it or for a separate local-development client.
+
 RehabSense's "Continue with Google" stays **Not configured** until these steps are done.
 Nothing here needs a billing account or a payment card. You need a Google account and
 about 10 minutes.

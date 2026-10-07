@@ -28,8 +28,8 @@ Values are limited to PASS, FAIL, NOT CONFIGURED and NOT TESTED.
 | Email signup | PASS | PASS | PASS |
 | Email login | PASS | PASS | PASS |
 | Email logout | PASS | PASS | PASS |
-| Google OAuth | PASS | NOT TESTED | NOT CONFIGURED |
-| Google returning login | PASS | NOT TESTED | NOT CONFIGURED |
+| Google OAuth | PASS | NOT TESTED | NOT TESTED |
+| Google returning login | PASS | NOT TESTED | NOT TESTED |
 | Facebook OAuth | PASS | NOT TESTED | NOT CONFIGURED |
 | Facebook returning login | PASS | NOT TESTED | NOT CONFIGURED |
 | Session persistence | PASS | PASS | PASS |
@@ -37,8 +37,23 @@ Values are limited to PASS, FAIL, NOT CONFIGURED and NOT TESTED.
 | User isolation | PASS | PASS | PASS |
 | Phone OTP | NOT CONFIGURED | NOT TESTED | NOT CONFIGURED |
 
-Google and Facebook are NOT CONFIGURED because they need OAuth credentials created in
-the owner's Google Cloud and Meta developer accounts. No other part of the work is
+**Google is configured** (2026-10-07). Google Cloud project `rehabsense` has the web
+client "RehabSense web", whose only redirect URI is
+`https://rehabsense-platform.vercel.app/api/auth/google/callback`.
+
+- **Publishing status:** In production.
+- **Scopes:** openid, email and profile only.
+- **API status:** `/api/auth/providers` reports `google: enabled`.
+- **Live check:** on the live site, "Continue with Google" opens Google's real account
+  chooser for this client with no configuration error.
+- **Still to do:** a full sign-in by a person choosing their Google account. Until then
+  the live result is NOT TESTED.
+
+**Facebook is NOT CONFIGURED:** the owner chose to skip it. A Meta developer account
+registration was started but not finished.
+
+Google and Facebook needed OAuth credentials created in the owner's Google Cloud and
+Meta developer accounts. No other part of the work is
 waiting. The live site shows both buttons with a **Not configured** badge. Clicking one
 explains this and keeps email sign-in available; nothing redirects and no session is
 created. That behaviour was verified live (checks 18 and 18b below).
@@ -102,7 +117,9 @@ account case. See [GOOGLE_OAUTH_SETUP.md](GOOGLE_OAUTH_SETUP.md) and
 
 ## Verdict
 
-**PRODUCTION PARTIALLY WORKING.**
+**PRODUCTION PARTIALLY WORKING.** Google sign-in is configured and reaches Google's
+account chooser; a first real sign-in is still to be performed. Facebook is not
+configured.
 
 - **Working live, end to end:** email/password, sessions, records, isolation, devices,
   the simulator, ML and the database.
