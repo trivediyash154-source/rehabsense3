@@ -75,6 +75,9 @@ class Hello(BaseModel):
     # infers "simulated" from anything else.
     simulated: bool = False
     scenario: str | None = Field(default=None, max_length=40)
+    # Protocol v1 has no per-device keys. Where the server sets a fleet key
+    # (DEVICE_INGEST_KEY), a v1 stream must present it here.
+    device_key: str | None = Field(default=None, max_length=200)
 
     @field_validator("protocol_version")
     @classmethod

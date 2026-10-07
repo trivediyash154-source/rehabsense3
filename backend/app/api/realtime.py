@@ -11,6 +11,7 @@ code apart from the `simulated` flag each declares in its handshake.
 from __future__ import annotations
 
 import asyncio
+import hmac
 import json
 import time
 
@@ -19,6 +20,7 @@ from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from app.core.security import decode_token
 from pydantic import ValidationError
 
+from app.core.config import get_settings
 from app.core.logging import get_logger, log_event
 from app.db.database import SessionLocal
 from app.db.models.patient import Leg
@@ -114,6 +116,26 @@ async def ingest(websocket: WebSocket, session_id: int, leg: str = Query(...)):
         await websocket.close(code=1008)
         return
     except WebSocketDisconnect:
+        return
+
+    # Who may stream. Protocol v1 has no per-device keys, so without a fleet
+    # key anyone who can reach this socket could push data into any active
+    # session. Production (registered devices required) therefore accepts v1
+    # only with DEVICE_INGEST_KEY, which the server's own simulator presents.
+    settings = get_settings()
+    refusal = None
+    if hello.simulated and not settings.allow_simulated_devices:
+        refusal = ("SIMULATED_DEVICES_DISABLED", "Simulated devices are disabled on this server.")
+    elif settings.device_ingest_key:
+        if not hmac.compare_digest((hello.device_key or "").encode(),
+                                   settings.device_ingest_key.encode()):
+            refusal = ("DEVICE_UNAUTHORIZED", "Device key missing or invalid.")
+    elif settings.require_registered_devices:
+        refusal = ("DEVICE_NOT_REGISTERED",
+                   "Protocol v1 streams are not accepted here without a device key.")
+    if refusal is not None:
+        await websocket.send_json(ProtocolError(code=refusal[0], message=refusal[1]).model_dump())
+        await websocket.close(code=1008)
         return
 
     if hello.leg is not None and hello.leg.value != leg_enum.value:

@@ -77,6 +77,7 @@ def start(
     duration_s: int = DEFAULT_DURATION_S,
     fsr: bool = True,
     seed: int | None = None,
+    device_key: str | None = None,
 ) -> Run:
     """Start a simulated stream for one session. Raises on refusal."""
     duration = max(5, min(int(duration_s), MAX_DURATION_S))
@@ -101,6 +102,8 @@ def start(
             argv.append("--fsr")
         if seed is not None:
             argv += ["--seed", str(seed)]
+        if device_key:
+            argv += ["--device-key", device_key]
 
         process = subprocess.Popen(
             argv,

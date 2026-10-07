@@ -372,3 +372,60 @@ def test_persistently_corrupt_input_is_eventually_disconnected(client, clinician
             for _ in range(60):
                 ws.send_text("garbage")
                 ws.receive_json()
+
+
+# --- who may stream into a session (protocol v1 has no per-device keys) --- #
+
+def _v1_refusal(client, session_id, hello) -> str | None:
+    with client.websocket_connect(f"/ws/ingest/{session_id}?leg=LEFT") as ws:
+        ws.send_json(hello)
+        msg = ws.receive_json()
+    return None if msg["type"] == "hello_ack" else msg["code"]
+
+
+def test_v1_stream_needs_the_fleet_key_when_one_is_set(client, live_session, monkeypatch):
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "device_ingest_key", "fleet-key-for-tests-0123456789")
+    sid = live_session["id"]
+    assert _v1_refusal(client, sid, _hello("LEFT")) == "DEVICE_UNAUTHORIZED"
+    assert _v1_refusal(client, sid, _hello("LEFT") | {"device_key": "wrong"}) == "DEVICE_UNAUTHORIZED"
+    assert _v1_refusal(client, sid, _hello("LEFT") | {"device_key": "fleet-key-for-tests-0123456789"}) is None
+
+
+def test_v1_stream_is_refused_in_production_without_a_fleet_key(client, live_session, monkeypatch):
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "device_ingest_key", None)
+    monkeypatch.setattr(get_settings(), "require_registered_devices", True)
+    assert _v1_refusal(client, live_session["id"], _hello("LEFT")) == "DEVICE_NOT_REGISTERED"
+
+
+def test_v1_simulated_stream_respects_the_simulated_devices_switch(client, live_session, monkeypatch):
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "allow_simulated_devices", False)
+    assert _v1_refusal(client, live_session["id"], _hello("LEFT")) == "SIMULATED_DEVICES_DISABLED"
+
+
+def test_v1_simulator_is_given_the_loopback_host_and_the_fleet_key(client, clinician, live_session,
+                                                                     monkeypatch):
+    """The server's own simulator reaches this process over loopback (the
+    public host is not reachable as ws://host:port behind a proxy) and
+    presents the fleet key."""
+    from app.core.config import get_settings
+    from app.services import sim_runner
+
+    monkeypatch.setattr(get_settings(), "device_ingest_key", "fleet-key-for-tests-0123456789")
+    seen = {}
+
+    def fake_start(session_id, **kwargs):
+        seen.update(kwargs)
+        raise RuntimeError("not started in tests")
+
+    monkeypatch.setattr(sim_runner, "start", fake_start)
+    r = client.post(f"/api/sessions/{live_session['id']}/simulate", headers=clinician["headers"],
+                    json={"scenario": "ASYMMETRY", "duration_s": 10})
+    assert r.status_code == 409  # the fake refused to start
+    assert seen["host"].startswith("127.0.0.1:")
+    assert seen["device_key"] == "fleet-key-for-tests-0123456789"

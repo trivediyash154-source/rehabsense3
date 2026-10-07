@@ -55,7 +55,8 @@ class LegStream:
 
     def __init__(self, *, host: str, session_id: int, leg: str, severity: float,
                  exercise: str, seed: int, config: dict, duration: float, fsr: bool,
-                 speed: float = 1.0):
+                 speed: float = 1.0, device_key: str | None = None):
+        self.device_key = device_key
         self.host = host
         self.session_id = session_id
         self.leg = leg
@@ -130,6 +131,7 @@ class LegStream:
                 # because of this flag, never because it guessed.
                 "simulated": True,
                 "scenario": self.config.get("name"),
+                **({"device_key": self.device_key} if self.device_key else {}),
             }))
             ack = json.loads(await ws.recv())
             if ack.get("type") != "hello_ack":
@@ -215,6 +217,7 @@ async def run_simulation(args) -> None:
                 # Distinct but deterministic per leg.
                 seed=args.seed + index * 1000,
                 config=config, duration=args.duration, fsr=args.fsr,
+                device_key=args.device_key,
             )
         )
 
@@ -242,6 +245,8 @@ def main() -> None:
                         help="Wall-clock speed-up. Sample timestamps and count are "
                              "unchanged, so the stored session is identical.")
     parser.add_argument("--fsr", action="store_true", help="Declare and stream a foot-pressure sensor.")
+    parser.add_argument("--device-key", default=None,
+                        help="Fleet key (DEVICE_INGEST_KEY) for servers that require one.")
     parser.add_argument("--list-scenarios", action="store_true")
     args = parser.parse_args()
 

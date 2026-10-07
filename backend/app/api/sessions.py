@@ -23,6 +23,7 @@ from fastapi import APIRouter, Query, Response, status, Request
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbDep
+from app.core.config import get_settings
 from app.core.exceptions import Conflict, Forbidden, SessionNotFound
 from app.db.models.session import (
     ExerciseType,
@@ -143,8 +144,10 @@ async def start_simulated_stream(
     if sim_runner.is_running(session_id):
         raise Conflict("A simulated stream is already running for this session.")
 
-    # The simulator connects back to this server, whatever port it is on.
-    host = f"{request.url.hostname}:{request.url.port or 8000}"
+    # The simulator connects back to THIS process over loopback. The public
+    # host name is not reachable as ws://host:port behind TLS or a proxy
+    # (it never was on the hosted deployment), so it is not used.
+    host = sim_runner.loopback_host(request)
     operated = session.patient.operated_leg.value if session.patient.operated_leg else "LEFT"
     try:
         sim_runner.start(
@@ -155,6 +158,7 @@ async def start_simulated_stream(
             exercise=session.exercise_type.value,
             duration_s=payload.duration_s,
             seed=payload.seed,
+            device_key=get_settings().device_ingest_key,
         )
     except RuntimeError as exc:
         raise Conflict(str(exc))
