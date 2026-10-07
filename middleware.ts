@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 
 /**
  * Route protection at the edge, before any workspace page renders.
@@ -59,7 +59,27 @@ function hasLiveSession(token: string | undefined): boolean {
   }
 }
 
-export function middleware(request: NextRequest) {
+/**
+ * Start waking the API the moment someone opens a sign-in page.
+ *
+ * The API scales to zero after five idle minutes and takes several seconds to
+ * start again. The browser's own check only runs after the page has loaded
+ * and hydrated; asking here, at the edge, starts the API's boot seconds
+ * earlier. Fire-and-forget (waitUntil): the page never waits for it, and the
+ * sign-in form still reports the real state from its own check.
+ */
+function wakeApi(event: NextFetchEvent) {
+  const origin = process.env.BACKEND_ORIGIN;
+  if (!origin || origin === "none") return;
+  event.waitUntil(
+    fetch(`${origin.replace(/\/$/, "")}/api/auth/providers`, { cache: "no-store" }).then(
+      () => undefined,
+      () => undefined,
+    ),
+  );
+}
+
+export function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname, search } = request.nextUrl;
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   const signedIn = hasLiveSession(token);
@@ -83,6 +103,7 @@ export function middleware(request: NextRequest) {
   }
 
   if (AUTH_PAGES.includes(pathname)) {
+    if (!signedIn) wakeApi(event);
     if (signedIn) {
       return NextResponse.redirect(new URL("/workspace", request.url));
     }

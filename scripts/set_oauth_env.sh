@@ -6,6 +6,9 @@
 #   npx vercel@latest login          # once, in this terminal
 #   bash scripts/set_oauth_env.sh    # paste the values when asked
 #
+# VERCEL_GLOBAL_CONFIG=<dir> reuses a login stored in another Vercel CLI
+# config directory (the -Q flag) instead of the default one.
+#
 # Press Enter at a prompt to skip that provider. Run it again any time to
 # replace a value. A redeploy of the API is needed afterwards (env changes
 # apply to new deployments only).
@@ -16,6 +19,9 @@ API_PROJECT_ID=prj_ylHGtJbAT868yeCW1LtrslhN0Wz6
 SITE=https://rehabsense-platform.vercel.app
 VERCEL=(npx --yes vercel@latest)
 [ -n "${VERCEL_BIN:-}" ] && VERCEL=("$VERCEL_BIN")
+# Reuse a Vercel CLI login kept in another config directory (vercel -Q).
+[ -n "${VERCEL_GLOBAL_CONFIG:-}" ] && VERCEL+=(-Q "$VERCEL_GLOBAL_CONFIG")
+export VERCEL_TELEMETRY_DISABLED=1
 
 export VERCEL_ORG_ID=$ORG_ID VERCEL_PROJECT_ID=$API_PROJECT_ID
 # Run from an empty directory so no .vercel link is created in the repository.
