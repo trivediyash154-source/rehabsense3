@@ -328,3 +328,18 @@ def test_live_relay_is_off_by_default_and_skips_oversized_messages(monkeypatch):
     assert pg_relay.relay_enabled() is True
     relay.publish(1, {"type": "hw_sensor_frame", "rows": ["x" * 9000]})
     assert relay.skipped_large == 1 and relay._publisher is None
+
+
+def test_startup_schema_check_agrees_with_alembic():
+    """The text-read head used at startup must be exactly Alembic's head."""
+    from pathlib import Path
+
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    from app.api.health import head_revision
+
+    root = Path(__file__).resolve().parents[1]
+    cfg = Config(str(root / "alembic.ini"))
+    cfg.set_main_option("script_location", str(root / "migrations"))
+    assert head_revision() == ScriptDirectory.from_config(cfg).get_current_head()

@@ -6,6 +6,10 @@ and never expose connection strings or internal configuration.
 
 from __future__ import annotations
 
+import re
+from functools import lru_cache
+from pathlib import Path
+
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -24,17 +28,36 @@ def health():
     return {"status": "ok"}
 
 
+@lru_cache
+def head_revision() -> str:
+    """The Alembic head revision, read from the migration files as text.
+
+    Importing Alembic's script machinery (it loads its autogenerate plugins and
+    imports every migration module) ran on every serverless cold start just to
+    learn one string. The files declare `revision` and
+    `down_revision` literally, so the head is the revision nothing points
+    back to. tests/test_deployment.py checks this against Alembic itself.
+    """
+    versions = Path(__file__).resolve().parents[2] / "migrations" / "versions"
+    revisions: set[str] = set()
+    parents: set[str] = set()
+    for path in versions.glob("*.py"):
+        text = path.read_text(encoding="utf-8")
+        rev = re.search(r"^revision\s*=\s*['\"]([^'\"]+)['\"]", text, re.M)
+        down = re.search(r"^down_revision\s*=\s*(.+)$", text, re.M)
+        if rev:
+            revisions.add(rev.group(1))
+        if down:
+            parents.update(re.findall(r"['\"]([^'\"]+)['\"]", down.group(1)))
+    heads = revisions - parents
+    if len(heads) != 1:
+        raise RuntimeError(f"Expected exactly one Alembic head, found {sorted(heads)}")
+    return heads.pop()
+
+
 def schema_status(db) -> str:
     """'ok' when the database is at the Alembic head, else 'migration_required'."""
-    from pathlib import Path
-
-    from alembic.config import Config
-    from alembic.script import ScriptDirectory
-
-    root = Path(__file__).resolve().parents[2]
-    cfg = Config(str(root / "alembic.ini"))
-    cfg.set_main_option("script_location", str(root / "migrations"))
-    head = ScriptDirectory.from_config(cfg).get_current_head()
+    head = head_revision()
     try:
         current = db.execute(text("SELECT version_num FROM alembic_version")).scalar()
     except Exception:

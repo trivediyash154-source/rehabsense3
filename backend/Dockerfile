@@ -20,6 +20,11 @@ COPY backend/requirements-runtime.txt backend/requirements-production.txt ./
 RUN pip install -r requirements-production.txt
 
 COPY backend/ ./
+# Precompile to bytecode. PYTHONDONTWRITEBYTECODE stops Python writing .pyc at
+# run time, so without this every serverless cold start recompiled the whole
+# app from source before it could answer a request.
+RUN python -m compileall -q -j 0 /app/app /app/migrations \
+    && python -m compileall -q -j 0 "$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')"
 # Inference only: the trained, hash-verified bundles. Training never happens
 # here. Only the two deployed bundles are copied, not datasets or experiments.
 COPY ml/artifacts/activity_bilateral /app/models/activity_bilateral
