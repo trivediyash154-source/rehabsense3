@@ -131,6 +131,8 @@ class HardwareRegistry:
                     sensing_service.persist_assessment(db, hw.session_id, e.payload)
                 elif e.persist == "rep":
                     sensing_service.persist_rep(db, hw.session_id, e.payload)
+                elif e.persist == "snapshot":
+                    sensing_service.persist_live_snapshot(db, hw.session_id, e.payload)
             db.commit()
         except Exception:  # pragma: no cover - defensive
             db.rollback()

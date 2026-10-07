@@ -36,6 +36,15 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Will asking again never help? A 401/403/404 means not signed in, not
+ * permitted, or the thing is gone. Anything else -- a network blip, or a
+ * gateway answering while a serverless API wakes from idle -- is temporary.
+ */
+export function isPermanentFailure(error: unknown): boolean {
+  return error instanceof ApiError && [401, 403, 404].includes(error.status);
+}
+
 export async function apiFetch<T>(
   path: string,
   init: RequestInit & { auth?: boolean } = {},

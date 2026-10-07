@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, liveSocketUrl } from "./client";
+import { api, isPermanentFailure, liveSocketUrl } from "./client";
 
 /**
  * Live session feed with automatic reconnect.
@@ -110,10 +110,17 @@ export function useLiveSession(sessionId: number | null, enabled = true) {
     let ticket: string;
     try {
       ticket = (await api.liveTicket(sessionId)).ticket;
-    } catch {
-      // Not signed in, or not permitted to view this session. Retrying will
+    } catch (error) {
+      // Not signed in, or not permitted to view this session: retrying will
       // not change either, so stop rather than loop against a closed door.
-      if (!closedRef.current) setState((s) => ({ ...s, socket: "closed" }));
+      // A network error or a gateway answering while the API wakes is
+      // temporary, so that is retried with the same backoff as a dropped
+      // socket.
+      if (isPermanentFailure(error)) {
+        if (!closedRef.current) setState((s) => ({ ...s, socket: "closed" }));
+      } else {
+        scheduleReconnect();
+      }
       return;
     }
     if (closedRef.current) return;

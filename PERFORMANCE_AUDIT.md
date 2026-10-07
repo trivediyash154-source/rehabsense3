@@ -59,10 +59,24 @@ estimated, and no improvement is claimed without a measurement after it.
 
 ### Measured after 6+ minutes of idle (live)
 
+Both the API instance **and** the Neon database had scaled to zero. Times run from
+opening the page until the sign-in form has confirmed the API.
+
+| Scenario | Result | What the logs showed |
+|---|---|---|
+| A. Straight to `/login` on a cold API | **11.3 s**. "Waking the RehabSense API…" was shown, never an error | One new instance: platform boot 4.9 s, imports 1.6 s, startup DB 0.9 s (database waking). The rest was the page loading and hydrating *before* the browser asked the API anything. |
+| B. Landing page, 10 s of reading, then `/login` (first warm-up version: fired on idle) | **7.3 s**, with the waking message | **Two** new instances. The landing page's warm-up started one (boot 6.1 s, imports 3.1 s, database wake 2.4 s). The sign-in check arrived while it was still booting, so Vercel started a second. A booting instance does not take other requests. |
+
+**Fixes after this measurement** (deployed in `0e4592f`):
+
+- The edge middleware fires the warm-up as soon as `/login` or `/signup` is requested,
+  before the page renders. Verified: a plain `curl` of `/login` produces an API request
+  one second later.
+- The landing page fires its warm-up on mount instead of when the browser is idle.
+
 | Scenario | Result |
 |---|---|
-| A. Straight to `/login` on a cold API | _measuring_ |
-| B. Landing page, 10 s of reading, then `/login` | _measuring_ |
+| A′. Straight to `/login` on a cold API, with the edge warm-up | _measuring_ |
 
 ## Checked and not found
 

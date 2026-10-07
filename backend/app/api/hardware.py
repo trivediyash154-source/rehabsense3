@@ -362,12 +362,24 @@ def session_validation(session_id: int, user: CurrentUser, db: DbDep):
     session = _session(db, user, session_id)
     live = hw_registry.get(session_id)
     if live is not None:
-        p = live.processor
-        return assess(p.monitor.as_dict(),
-                      (p.calibrator.metadata() | {"stale_reason": p.calibration_stale_reason})
-                      if p.calibrator.complete else None,
-                      provenance=p.provenance, disconnects=p.disconnects,
-                      imu_sides=list(p.layout.imu_sides)) | {"live": True}
+        v = live.processor.validation_inputs()
+        return assess(v["stream"], v["calibration"], provenance=v["provenance"],
+                      disconnects=v["disconnects"], imu_sides=v["imu_sides"]) | {"live": True}
+    if session.status is SessionStatus.ACTIVE:
+        # The stream is held by another API instance: answer from the
+        # snapshot it writes every few seconds, and say how old it is.
+        from datetime import datetime, timezone
+
+        from app.db.models.base import as_utc
+        from app.db.models.sensing import LiveSnapshot
+
+        snap = db.get(LiveSnapshot, session_id)
+        if snap is not None:
+            v = snap.payload
+            age = (datetime.now(timezone.utc) - as_utc(snap.updated_at)).total_seconds()
+            return assess(v["stream"], v.get("calibration"), provenance=v["provenance"],
+                          disconnects=v.get("disconnects", 0), imu_sides=v.get("imu_sides")) \
+                | {"live": True, "snapshot_age_s": round(age, 1)}
     summary = session.summary or {}
     if summary.get("protocol_version") != 2 or "stream" not in summary:
         raise NotFound("No hardware (protocol v2) stream record for this session.")

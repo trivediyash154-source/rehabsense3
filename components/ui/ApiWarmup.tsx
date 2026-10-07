@@ -19,9 +19,9 @@ export function ApiWarmup() {
     if (warmed) return;
     warmed = true;
     // Immediately, not on idle: the landing page's 3D scene keeps the main
-    // thread busy, and an idle callback fired ~9 s late in a live measurement.
-    // A booting instance does not take other requests, so the earlier the
-    // boot starts, the more of it is over before "Sign in".
+    // thread busy, so an idle callback can fire seconds late. A booting
+    // instance does not take other requests (the host starts another one),
+    // so the earlier the boot starts, the more of it is over before "Sign in".
     void fetch("/api/auth/providers", { cache: "no-store" }).catch(() => {});
   }, []);
   return null;

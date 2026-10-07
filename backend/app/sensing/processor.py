@@ -144,6 +144,7 @@ class DualSessionProcessor:
         self._last_rep_scan = -1.0
         self._last_frame_emit = -1.0
         self._last_health_emit = -1.0
+        self._last_snapshot = -1.0
         self._last_assessment = -1.0
         self._cal_bucket = -1
         self._frame_rows: list = []
@@ -794,15 +795,33 @@ class DualSessionProcessor:
         return movement_quality(reps, self._bilateral_summary(), base,
                                 self._stream_quality(), self.calibrator.quality)
 
+    def validation_inputs(self) -> dict:
+        """What hardware-data validation is computed from (see sensing.validation)."""
+        return {
+            "stream": self.monitor.as_dict(),
+            "calibration": (self.calibrator.metadata() | {"stale_reason": self.calibration_stale_reason})
+            if self.calibrator.complete else None,
+            "provenance": self.provenance,
+            "disconnects": self.disconnects,
+            "imu_sides": list(self.layout.imu_sides),
+        }
+
     def _maybe_health(self) -> list[Event]:
         if self.clock - self._last_health_emit < 2.0:
             return []
         self._last_health_emit = self.clock
-        return self._alert_markers() + [Event("hw_stream_health", {
+        events = self._alert_markers() + [Event("hw_stream_health", {
             **self.monitor.as_dict(),
             "stream_quality": round(self._stream_quality(), 3),
             "latency": self.latency.as_dict(),
         }), self.connection_event()]
+        # Persisted every few seconds so any API instance can answer a
+        # validation poll while this one holds the stream (multi-instance hosts).
+        if self.clock - self._last_snapshot >= 4.0:
+            self._last_snapshot = self.clock
+            events.append(Event("live_snapshot", self.validation_inputs(),
+                                broadcast=False, persist="snapshot"))
+        return events
 
     # ------------------------------------------------------------------ #
     # finalisation

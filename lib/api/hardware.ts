@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, apiFetch, liveSocketUrl } from "./client";
+import { api, apiFetch, isPermanentFailure, liveSocketUrl } from "./client";
 
 /**
  * Hardware v2: one ESP32 with a LEFT and a RIGHT MPU6050 plus force channels.
@@ -372,8 +372,16 @@ export function useHardwareLive(sessionId: number | null) {
     let ticket: string;
     try {
       ticket = (await api.liveTicket(sessionId)).ticket;
-    } catch {
-      if (!closedRef.current) setState((s) => ({ ...s, socket: "closed" }));
+    } catch (error) {
+      // Signed out, not permitted or session gone: asking again cannot help.
+      // Anything else (the host cuts every socket at 300 s, and the reconnect
+      // may land on an instance still waking) is retried with backoff -- a
+      // single failed ticket used to end the live view for good.
+      if (isPermanentFailure(error)) {
+        if (!closedRef.current) setState((s) => ({ ...s, socket: "closed" }));
+      } else {
+        scheduleReconnect();
+      }
       return;
     }
     if (closedRef.current) return;

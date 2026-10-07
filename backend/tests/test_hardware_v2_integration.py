@@ -544,3 +544,34 @@ def test_research_recording_requires_consent_and_retains_only_verified_hardware(
     assert user[0]["label"] == "rep_start" and user[0]["time_basis"] == "SERVER_RECEIVE_TIME_MAPPED"
     assert rr["markers"][0]["kind"] == "recording_start" and rr["markers"][0]["source"] == "SERVER"
     assert rr["recording"]["samples"] == 400
+
+
+def test_validation_poll_on_another_instance_reads_the_live_snapshot(client, clinician, squat_session,
+                                                                     db, monkeypatch):
+    """Multi-instance hosts: the instance holding the stream persists its
+    validation inputs every few seconds, so a poll that reaches an instance
+    without the stream answers with recent figures instead of 404."""
+    from app.api import hardware as hardware_api
+    from app.db.models.sensing import LiveSnapshot
+
+    sid = squat_session["id"]
+    headers = clinician["headers"]
+    model = DualImuModel(exercise="SQUAT", seed=11)
+    with client.websocket_connect(f"/ws/ingest/v2/{sid}") as dev:
+        dev.send_json(_hello())
+        assert dev.receive_json()["type"] == "hello_ack"
+        _stream(dev, model, 12.0)
+        _flush(dev)
+
+        db.expire_all()
+        snap = db.get(LiveSnapshot, sid)
+        assert snap is not None
+        assert snap.payload["stream"]["samples_accepted"] > 0
+        assert snap.payload["provenance"] == "SIMULATED"
+
+        # This instance "does not hold" the stream: the poll lands elsewhere.
+        monkeypatch.setattr(hardware_api.hw_registry, "get", lambda session_id: None)
+        r = client.get(f"/api/sessions/{sid}/validation", headers=headers)
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["live"] is True and body["snapshot_age_s"] >= 0

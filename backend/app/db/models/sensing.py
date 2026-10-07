@@ -392,3 +392,21 @@ class RecordingArtifact(Base, TimestampMixin):
     export_version: Mapped[str | None] = mapped_column(String(32))
     deidentified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+
+
+class LiveSnapshot(Base):
+    """The latest validation inputs of a session that is streaming right now.
+
+    Live state lives in the memory of the one API instance receiving the
+    device's stream. On a host that runs several instances, a dashboard poll
+    can land on another one; this row (written every few seconds by the
+    receiving instance) lets any instance answer with recent figures instead
+    of "not found". Deleted with its session.
+    """
+
+    __tablename__ = "live_snapshots"
+
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("sessions.id", ondelete="CASCADE"), primary_key=True)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

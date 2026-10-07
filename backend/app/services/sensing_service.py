@@ -402,6 +402,21 @@ def persist_assessment(db: DbSession, session_id: int, payload: dict,
     ))
 
 
+def persist_live_snapshot(db: DbSession, session_id: int, payload: dict) -> None:
+    """Upsert the session's latest validation inputs (see models.LiveSnapshot)."""
+    from datetime import datetime, timezone
+
+    from app.db.models.sensing import LiveSnapshot
+
+    now = datetime.now(timezone.utc)
+    row = db.get(LiveSnapshot, session_id)
+    if row is None:
+        db.add(LiveSnapshot(session_id=session_id, payload=payload, updated_at=now))
+    else:
+        row.payload = payload
+        row.updated_at = now
+
+
 def persist_rep(db: DbSession, session_id: int, payload: dict) -> None:
     exists = db.execute(select(RepetitionResult.id).where(
         RepetitionResult.session_id == session_id,
