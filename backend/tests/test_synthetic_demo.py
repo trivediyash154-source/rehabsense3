@@ -303,3 +303,41 @@ def test_reset_refuses_when_a_demo_record_holds_real_data(db):
     assert db.get(PatientProfile, p.id) is not None
     db.delete(p)
     db.commit()
+
+
+def test_concurrent_first_registration_of_a_device_id_does_not_fail(db):
+    """Two streams announcing one new device id at once: the loser of the
+    unique-key race reuses the winner's row instead of failing its handshake."""
+    from sqlalchemy import select
+
+    from app.db.database import SessionLocal
+    from app.db.models.device import Device
+    from app.services import sensing_service
+
+    device_id = f"race-{uuid.uuid4().hex[:8]}"
+    other = SessionLocal()
+    real_execute = db.execute
+    calls = {"n": 0}
+
+    def racing_execute(statement, *args, **kwargs):
+        # The first lookup misses; meanwhile another connection inserts it.
+        result = real_execute(statement, *args, **kwargs)
+        if calls["n"] == 0 and "devices" in str(statement):
+            calls["n"] += 1
+            other.add(Device(device_id=device_id))
+            other.commit()
+
+            class Miss:
+                def scalar_one_or_none(self):
+                    return None
+            return Miss()
+        return result
+
+    db.execute = racing_execute
+    try:
+        row = sensing_service._device_row(db, device_id)
+    finally:
+        db.execute = real_execute
+        other.close()
+    assert row.device_id == device_id
+    assert db.execute(select(Device).where(Device.device_id == device_id)).scalars().all() == [row]

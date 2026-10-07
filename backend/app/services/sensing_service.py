@@ -137,12 +137,31 @@ def revoke_hardware(db: DbSession, device_id: str, actor_id: int) -> bool:
     return True
 
 
+def _device_row(db: DbSession, device_id: str) -> Device:
+    """The device row for this id, created if absent.
+
+    Two streams can announce a new device id at the same moment (two API
+    instances, or simulators sharing an id). The insert runs in a savepoint,
+    so the one that loses the unique-key race uses the winner's row instead
+    of failing its handshake.
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    device = db.execute(select(Device).where(Device.device_id == device_id)).scalar_one_or_none()
+    if device is not None:
+        return device
+    try:
+        with db.begin_nested():
+            device = Device(device_id=device_id)
+            db.add(device)
+        return device
+    except IntegrityError:
+        return db.execute(select(Device).where(Device.device_id == device_id)).scalar_one()
+
+
 def register_v2_device(db: DbSession, session_id: int, hello, provenance: str) -> int:
     """Upsert the device and one sensor row per declared IMU / force channel."""
-    device = db.execute(select(Device).where(Device.device_id == hello.device_id)).scalar_one_or_none()
-    if device is None:
-        device = Device(device_id=hello.device_id)
-        db.add(device)
+    device = _device_row(db, hello.device_id)
     device.kind = (DeviceKind.HARDWARE if provenance == prov.PHYSICAL_REGISTERED
                    else DeviceKind.SIMULATOR if prov.is_non_physical(provenance)
                    else DeviceKind.UNVERIFIED)
