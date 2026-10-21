@@ -32,7 +32,7 @@
 
 % ---------------- offline path (bottom lane)
 \path (har.south) ++(0,-6.8mm) coordinate (offy);
-\node[ml, anchor=north] (pub) at (dev.center |- offy) {\textbf{Public datasets}\\Daily \& Sports\\(bilateral), PAMAP2,\\UCI HAR};
+\node[ml, anchor=north] (pub) at (dev.center |- offy) {\textbf{Public datasets}\\Daily \& Sports\\(bilateral legs),\\PAMAP2 (ankle)};
 \node[ml, right=of pub] (feat) {\textbf{Shared feature code}\\version-locked\\with the server};
 \node[ml, right=of feat] (cv) {\textbf{Subject-independent}\\\textbf{benchmark}\\rotation, noise,\\bias, gain tests};
 \node[ml, right=of cv] (sel) {\textbf{Pre-registered}\\\textbf{selection rule}\\F1, robustness,\\p95 $\le$ 50\,ms};

@@ -201,7 +201,7 @@ def fig_simulator() -> None:
     for x_, m_ in zip(xs, mean):
         a2.annotate(f"{m_:.1f}", (x_, m_), textcoords="offset points", xytext=(4, 2), fontsize=5.6)
     a2.set_xlabel("Injected left-side deficit")
-    a2.set_ylabel("MQI (0–100)")
+    a2.set_ylabel("MQI (0 to 100)")
     a2.set_title("(b) Movement Quality Index", fontsize=7.5)
     a2.set_ylim(78, 99)
     for ax in (a1, a2):
