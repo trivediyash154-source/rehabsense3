@@ -1,0 +1,44 @@
+% Hardware block diagram (Fig. 2). Requires tikz libraries: positioning, arrows.meta, calc.
+\begin{tikzpicture}[
+  font=\scriptsize,
+  >={Stealth[length=1.4mm]},
+  part/.style={draw=black!70, rounded corners=1.2pt, align=center, inner sep=1.6pt, fill=white, line width=0.45pt},
+  imu/.style={part, fill=blue!7, draw=blue!55!black, text width=19mm, minimum height=9mm},
+  fsr/.style={part, fill=green!8, draw=green!45!black, text width=17mm, minimum height=9mm},
+  pwr/.style={part, fill=red!6, draw=red!50!black, text width=15.5mm, minimum height=7mm},
+  wire/.style={line width=0.55pt, draw=black!80},
+  lbl/.style={font=\tiny, text=black!75, align=center, inner sep=1pt},
+]
+\node[part, fill=black!5, text width=19.5mm, minimum height=25mm] (esp) at (0,0)
+  {\textbf{ESP32}\\DevKit V1\\[0.8mm]I$^2$C: GPIO21/22\\ADC1: GPIO34/35\\[0.8mm]FreeRTOS\\sampling task,\\one timestamp\\per tick};
+
+\node[imu, anchor=east] (imuL) at ($(esp.west)+(-10mm, 6.5mm)$) {\textbf{MPU6050 (L)}\\left shank\\AD0$\to$GND: 0x68};
+\node[imu, anchor=east] (imuR) at ($(esp.west)+(-10mm,-6.5mm)$) {\textbf{MPU6050 (R)}\\right shank\\AD0$\to$3V3: 0x69};
+
+% shared I2C bus
+\coordinate (busx) at ($(esp.west)+(-4.5mm,0)$);
+\draw[wire] (imuL.east) -- (imuL.east -| busx);
+\draw[wire] (imuR.east) -- (imuR.east -| busx);
+\draw[wire] (imuL.east -| busx) -- (imuR.east -| busx);
+\draw[wire, ->] (busx) -- (esp.west |- busx);
+\fill (imuL.east -| busx) circle (0.5pt);
+\fill (imuR.east -| busx) circle (0.5pt);
+\node[lbl, rotate=90, anchor=south] at ($(busx)+(-0.6mm,0)$) {I$^2$C 400\,kHz};
+
+\node[fsr, anchor=west] (fsrL) at ($(esp.east)+(10mm, 6.5mm)$) {\textbf{FSR402 (L)}\\heel, 10\,k$\Omega$\\divider};
+\node[fsr, anchor=west] (fsrR) at ($(esp.east)+(10mm,-6.5mm)$) {\textbf{FSR402 (R)}\\heel, 10\,k$\Omega$\\divider};
+\draw[wire, ->] (fsrL.west) -- node[lbl, above]{GPIO34} (fsrL.west -| esp.east);
+\draw[wire, ->] (fsrR.west) -- node[lbl, below]{GPIO35} (fsrR.west -| esp.east);
+
+% power chain
+\node[pwr, below=5mm of esp, xshift=-18mm] (bat) {18650 Li-ion\\3.7\,V cell};
+\node[pwr, right=2.5mm of bat] (chg) {TP4056\\charge + protect};
+\node[pwr, right=2.5mm of chg] (bst) {MT3608\\boost to 5\,V};
+\draw[wire, ->] (bat) -- (chg);
+\draw[wire, ->] (chg) -- (bst);
+\draw[wire, ->] (bst.north) |- ($(esp.south)+(0,-2mm)$) -- node[lbl, right, pos=0.3]{VIN} (esp.south);
+
+% wireless link
+\node[part, above=4mm of esp, text width=40mm, fill=black!3] (srv) {Wi-Fi $\rightarrow$ WebSocket (ws/wss), 10 samples/frame};
+\draw[wire, <->, dashed] (esp.north) -- (srv.south);
+\end{tikzpicture}
