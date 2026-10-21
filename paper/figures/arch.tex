@@ -3,13 +3,13 @@
   font=\scriptsize,
   >={Stealth[length=1.5mm]},
   box/.style={draw=black!70, rounded corners=1.5pt, align=center, inner sep=1.8pt,
-              minimum height=9mm, text width=20.6mm, fill=white, line width=0.45pt},
+              minimum height=8.4mm, text width=20.6mm, fill=white, line width=0.45pt},
   key/.style={box, fill=blue!7, draw=blue!55!black},
   ml/.style={box, fill=orange!10, draw=orange!70!black},
   lane/.style={draw=black!25, rounded corners=3pt, fill=black!2, inner xsep=2.5pt, inner ysep=2.5pt},
   lanelabel/.style={font=\scriptsize\bfseries, text=black!60, anchor=south west, inner sep=1pt},
   flow/.style={->, line width=0.5pt, draw=black!75},
-  node distance=2.6mm and 4.2mm
+  node distance=2mm and 4.2mm
 ]
 % ---------------- online path (top lane)
 \node[key] (dev) {\textbf{Wearable node}\\ESP32, 2$\times$MPU6050\\(L/R shank), 2$\times$FSR,\\one 100\,Hz clock};
@@ -31,7 +31,7 @@
 \draw[flow] (db) -- (ui);
 
 % ---------------- offline path (bottom lane)
-\path (har.south) ++(0,-7.5mm) coordinate (offy);
+\path (har.south) ++(0,-6.8mm) coordinate (offy);
 \node[ml, anchor=north] (pub) at (dev.center |- offy) {\textbf{Public datasets}\\Daily \& Sports\\(bilateral), PAMAP2,\\UCI HAR};
 \node[ml, right=of pub] (feat) {\textbf{Shared feature code}\\version-locked\\with the server};
 \node[ml, right=of feat] (cv) {\textbf{Subject-independent}\\\textbf{benchmark}\\rotation, noise,\\bias, gain tests};

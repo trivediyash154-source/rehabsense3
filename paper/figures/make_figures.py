@@ -79,7 +79,7 @@ def fig_orientation_ablation() -> None:
     conds = [("Original\nmounting", None), ("Random\nre-mounting", "rotation"), ("3$\\times$ sensor\nnoise", "noise_x3")]
     x = np.arange(len(conds))
     w = 0.26
-    fig, ax = plt.subplots(figsize=(COL_W, 1.55))
+    fig, ax = plt.subplots(figsize=(COL_W, 1.42))
     for i, (label, m, color) in enumerate(sets):
         vals = [m["macro_f1"] if key is None else m["robustness_macro_f1"][key] for _, key in conds]
         bars = ax.bar(x + (i - 1) * w, vals, w, label=label, color=color, edgecolor="black", linewidth=0.4)
@@ -159,7 +159,7 @@ def fig_confusion() -> None:
              "sitting": "Sitting", "stairs_down": "Stairs dn.", "stairs_up": "Stairs up",
              "standing": "Standing", "walking": "Walking"}
     labels = [names[c] for c in m["classes"]]
-    fig, ax = plt.subplots(figsize=(COL_W, 2.05))
+    fig, ax = plt.subplots(figsize=(COL_W, 1.8))
     im = ax.imshow(cmn, cmap="Blues", vmin=0, vmax=1)
     for i in range(len(labels)):
         for j in range(len(labels)):

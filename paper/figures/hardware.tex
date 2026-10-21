@@ -9,7 +9,7 @@
   wire/.style={line width=0.55pt, draw=black!80},
   lbl/.style={font=\tiny, text=black!75, align=center, inner sep=1pt},
 ]
-\node[part, fill=black!5, text width=19.5mm, minimum height=25mm] (esp) at (0,0)
+\node[part, fill=black!5, text width=19.5mm, minimum height=23mm] (esp) at (0,0)
   {\textbf{ESP32}\\DevKit V1\\[0.8mm]I$^2$C: GPIO21/22\\ADC1: GPIO34/35\\[0.8mm]FreeRTOS\\sampling task,\\one timestamp\\per tick};
 
 \node[imu, anchor=east] (imuL) at ($(esp.west)+(-10mm, 6.5mm)$) {\textbf{MPU6050 (L)}\\left shank\\AD0$\to$GND: 0x68};
@@ -31,7 +31,7 @@
 \draw[wire, ->] (fsrR.west) -- node[lbl, below]{GPIO35} (fsrR.west -| esp.east);
 
 % power chain
-\node[pwr, below=5mm of esp, xshift=-18mm] (bat) {18650 Li-ion\\3.7\,V cell};
+\node[pwr, below=4mm of esp, xshift=-18mm] (bat) {18650 Li-ion\\3.7\,V cell};
 \node[pwr, right=2.5mm of bat] (chg) {TP4056\\charge + protect};
 \node[pwr, right=2.5mm of chg] (bst) {MT3608\\boost to 5\,V};
 \draw[wire, ->] (bat) -- (chg);
@@ -39,6 +39,6 @@
 \draw[wire, ->] (bst.north) |- ($(esp.south)+(0,-2mm)$) -- node[lbl, right, pos=0.3]{VIN} (esp.south);
 
 % wireless link
-\node[part, above=4mm of esp, text width=40mm, fill=black!3] (srv) {Wi-Fi $\rightarrow$ WebSocket (ws/wss), 10 samples/frame};
+\node[part, above=3mm of esp, text width=52mm, fill=black!3] (srv) {Wi-Fi $\rightarrow$ WebSocket (ws/wss), 10 samples/frame};
 \draw[wire, <->, dashed] (esp.north) -- (srv.south);
 \end{tikzpicture}
