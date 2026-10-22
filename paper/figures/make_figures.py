@@ -142,8 +142,8 @@ def fig_model_selection() -> None:
     ax.set_ylabel("Macro-F1 (subject-indep.)")
     ax.grid(linewidth=0.3, alpha=0.6)
     ax.set_axisbelow(True)
-    ax.legend(loc="lower right", bbox_to_anchor=(0.73, 0.0), frameon=True, framealpha=0.9, edgecolor="none",
-              borderpad=0.3, handletextpad=0.3, labelspacing=0.25)
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.01), ncol=2, frameon=False,
+              borderpad=0.2, handletextpad=0.3, labelspacing=0.25, columnspacing=1.0)
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)
     fig.savefig(OUT / "fig_model_selection.pdf")
