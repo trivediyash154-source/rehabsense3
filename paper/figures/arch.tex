@@ -1,0 +1,52 @@
+% System architecture (Fig. 1). Requires tikz libraries: positioning, arrows.meta, fit, backgrounds, calc.
+\begin{tikzpicture}[
+  font=\scriptsize,
+  >={Stealth[length=1.5mm]},
+  box/.style={draw=black!70, rounded corners=1.5pt, align=center, inner sep=1.8pt,
+              minimum height=8.4mm, text width=20.6mm, fill=white, line width=0.45pt},
+  key/.style={box, fill=blue!7, draw=blue!55!black},
+  ml/.style={box, fill=orange!10, draw=orange!70!black},
+  lane/.style={draw=black!25, rounded corners=3pt, fill=black!2, inner xsep=2.5pt, inner ysep=2.5pt},
+  lanelabel/.style={font=\scriptsize\bfseries, text=black!60, anchor=south west, inner sep=1pt},
+  flow/.style={->, line width=0.5pt, draw=black!75},
+  node distance=2mm and 4.2mm
+]
+% ---------------- online path (top lane)
+\node[key] (dev) {\textbf{Wearable node}\\ESP32, 2$\times$MPU6050\\(L/R shank), 2$\times$FSR,\\one 100\,Hz clock};
+\node[box, right=of dev] (ing) {\textbf{WebSocket ingest}\\\textbf{\& integrity}\\order, gaps, jitter,\\drift, frozen IMU};
+\node[key, right=of ing] (cal) {\textbf{Per-wearing}\\\textbf{calibration}\\8 checks; per IMU:\\bias, $\mathbf{g}_0$, axis $\mathbf{u}$};
+\node[box, right=of cal] (win) {\textbf{Windowing}\\anti-alias, 25\,Hz,\\2\,s window,\\0.5\,s stride};
+\node[key, above right=-1.6mm and 4.2mm of win] (ana) {\textbf{Movement metrics}\\tilt / ROM proxy,\\repetitions,\\asymmetry $A$, MQI};
+\node[ml, below right=-1.6mm and 4.2mm of win] (har) {\textbf{Activity model}\\324 invariant +\\neutral-pose feat.\\$\rightarrow$ random forest};
+\node[box, right=29.4mm of win] (db) {\textbf{PostgreSQL}\\raw chunks, results,\\provenance labels,\\audit trail};
+\node[box, right=of db] (ui) {\textbf{Clinician dashboard}\\Next.js live view\\(LISTEN/NOTIFY\\relay), PDF reports};
+
+\draw[flow] (dev) -- (ing);
+\draw[flow] (ing) -- (cal);
+\draw[flow] (cal) -- (win);
+\draw[flow] (win.east) -- ++(2mm,0) |- (ana.west);
+\draw[flow] (win.east) -- ++(2mm,0) |- (har.west);
+\draw[flow] (ana.east) -- ++(2mm,0) |- (db.west);
+\draw[flow] (har.east) -- ++(2mm,0) |- (db.west);
+\draw[flow] (db) -- (ui);
+
+% ---------------- offline path (bottom lane)
+\path (har.south) ++(0,-6.8mm) coordinate (offy);
+\node[ml, anchor=north] (pub) at (dev.center |- offy) {\textbf{Public datasets}\\Daily \& Sports\\(bilateral legs),\\PAMAP2 (ankle)};
+\node[ml, right=of pub] (feat) {\textbf{Shared feature code}\\version-locked\\with the server};
+\node[ml, right=of feat] (cv) {\textbf{Subject-independent}\\\textbf{benchmark}\\rotation, noise,\\bias, gain tests};
+\node[ml, right=of cv] (sel) {\textbf{Pre-registered}\\\textbf{selection rule}\\F1, robustness,\\p95 $\le$ 50\,ms};
+\node[ml, right=of sel] (bun) {\textbf{Model bundle}\\SHA-256 verified,\\versions, threshold};
+\draw[flow] (pub) -- (feat);
+\draw[flow] (feat) -- (cv);
+\draw[flow] (cv) -- (sel);
+\draw[flow] (sel) -- (bun);
+\draw[flow, dashed] (bun.north) -- (bun.north |- har.south) node[pos=0.45, right, font=\tiny, text=black!70]{deploy};
+
+\begin{scope}[on background layer]
+  \node[lane, fit=(dev)(ing)(cal)(win)(har)(ana)(db)(ui)] (online) {};
+  \node[lane, fill=orange!3, fit=(pub)(feat)(cv)(sel)(bun)] (offline) {};
+\end{scope}
+\node[lanelabel] at (online.north west) {Online path: device $\rightarrow$ analytics service $\rightarrow$ clinician};
+\node[lanelabel] at (offline.north west) {Offline path: public-data training (\texttt{ml/})};
+\end{tikzpicture}
